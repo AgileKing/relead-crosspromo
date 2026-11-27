@@ -12,6 +12,8 @@ namespace Relead.CrossPromo
         Skipped,
         /// <summary>Could not play. No reward.</summary>
         Failed,
+        /// <summary>Daily cap (maxPerDay) reached: the "Maxed out ads for today" notice was shown instead. No reward.</summary>
+        Capped,
     }
 
     public sealed class PromoResult

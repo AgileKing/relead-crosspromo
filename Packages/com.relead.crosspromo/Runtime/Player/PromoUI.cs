@@ -10,6 +10,7 @@ namespace Relead.CrossPromo
     {
         static Font _font;
         static Sprite _rounded;
+        static Sprite _glow;
         static Texture2D _phone;
 
         public static Font Font
@@ -145,6 +146,57 @@ namespace Relead.CrossPromo
                 _rounded = Sprite.Create(tex, new Rect(0, 0, s, s), new Vector2(0.5f, 0.5f), 100, 0, SpriteMeshType.FullRect, new Vector4(r, r, r, r));
                 _rounded.hideFlags = HideFlags.HideAndDontSave;
                 return _rounded;
+            }
+        }
+
+        /// <summary>How far a glow reaches beyond the element it sits behind, in canvas units.</summary>
+        public const float GlowSpread = 28f;
+
+        /// <summary>
+        /// Soft black glow behind an element placed with the same anchor (= pivot), pos and size: GlowSpread larger
+        /// on every side, fading out. Not a raycast target.
+        /// </summary>
+        public static GameObject Glow(string name, Transform parent, Vector2 anchor, Vector2 pos, Vector2 size)
+        {
+            var img = Panel(name, parent, new Color(0, 0, 0, 0.6f));
+            img.sprite = GlowSprite;
+            img.type = Image.Type.Sliced;
+            img.raycastTarget = false;
+            Place(img.rectTransform, anchor, anchor, pos + GlowOffset(anchor), size + Vector2.one * 2f * GlowSpread);
+            return img.gameObject;
+        }
+
+        /// <summary>Shift that keeps a GlowSpread-larger rect centred on the element, for a pivot = anchor placement.</summary>
+        public static Vector2 GlowOffset(Vector2 anchor)
+            => new Vector2((anchor.x - 0.5f) * 2f * GlowSpread, (anchor.y - 0.5f) * 2f * GlowSpread);
+
+        public const int GlowSize = 64;
+
+        /// <summary>Glow texture alpha at pixel (x, y): 1 in the centre, smoothstep to 0 at GlowSize/2 from it.</summary>
+        public static float GlowAlpha(int x, int y)
+        {
+            float c = GlowSize / 2f;
+            float dx = x + 0.5f - c, dy = y + 0.5f - c;
+            return 1f - Mathf.SmoothStep(0f, 1f, Mathf.Clamp01(Mathf.Sqrt(dx * dx + dy * dy) / c));
+        }
+
+        /// <summary>Sliced sprite: opaque centre, alpha fading to 0 over the 32 px border (smoothstep, round corners).</summary>
+        public static Sprite GlowSprite
+        {
+            get
+            {
+                if (_glow != null) return _glow;
+                const int s = GlowSize, r = GlowSize / 2;
+                var tex = new Texture2D(s, s, TextureFormat.RGBA32, false) { name = "CrossPromoGlow", hideFlags = HideFlags.HideAndDontSave };
+                var px = new Color32[s * s];
+                for (int y = 0; y < s; y++)
+                    for (int x = 0; x < s; x++)
+                        px[y * s + x] = new Color32(255, 255, 255, (byte)(GlowAlpha(x, y) * 255));
+                tex.SetPixels32(px);
+                tex.Apply(false, true);
+                _glow = Sprite.Create(tex, new Rect(0, 0, s, s), new Vector2(0.5f, 0.5f), 100, 0, SpriteMeshType.FullRect, new Vector4(r - 1, r - 1, r - 1, r - 1));
+                _glow.hideFlags = HideFlags.HideAndDontSave;
+                return _glow;
             }
         }
 

@@ -11,7 +11,7 @@ Date: 2026-11-27. User decision. Catalog side: crosspromo-content decisions 0002
 | 30 s → (`rewardAfterSec`) | Countdown turns into ×, plus a green **"Earned! Close"** button next to it. Skip stays. | Completed |
 
 - Content loops: the video player loops, and the slideshow wraps around. A 10 s video still runs into the panel and the reward, and a 60 s video keeps playing after 30 s.
-- The clock only ticks while content actually plays, as before (rotate hint and prepare time don't count).
+- The clock only ticks while content actually plays, as before (prepare time doesn't count; since 0009 the video plays during the rotate hint, so that time counts).
 - The parser raises `rewardAfterSec` to `endCardAtSec` if the catalog has it lower.
 - The slideshow keeps its own store button per slide, so it gets no extra download panel.
 - New event `promo_end_card` when the panel appears, and `promo_earned` when the reward unlocks.

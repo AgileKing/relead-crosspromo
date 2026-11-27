@@ -32,7 +32,8 @@ Everything runs in the background: the catalog is checked at most once a day, an
 ## 3. Rewarded button
 
 ```csharp
-watchButton.interactable = CrossPromo.IsReady;   // poll in Update or when the screen opens
+// IsCappedToday: Show then shows "Maxed out ads for today" (outcome Capped), so keep the button tappable.
+watchButton.interactable = !CrossPromo.IsShowing && (CrossPromo.IsReady || CrossPromo.IsCappedToday);
 
 CrossPromo.Show(result =>
 {
@@ -43,7 +44,7 @@ CrossPromo.Show(result =>
 - `IsReady` is also true when there is no video yet. In that case `Show` plays the bundled screenshot slideshow (offline fallback), with the same reward rules.
 - `result.StoreClicked` is for information only. **Never** make the reward depend on it (Apple 3.2.2 / Google Play policy).
 - `CrossPromo.Opened` / `CrossPromo.Closed` let you mute your music. The overlay uses unscaled time, so pausing with `Time.timeScale = 0` is fine.
-- The daily cap (`rules.maxPerDay` in the catalog) applies. `IsReady` turns false when it is reached.
+- The daily cap (`rules.maxPerDay` in the catalog) applies. When it is reached, `IsReady` turns false and `IsCappedToday` true. `Show` then shows a small notice ("Maxed out ads for today" / "Max aantal ads voor vandaag bereikt"; tap anywhere or ×, closes itself after 3 s) and reports `PromoOutcome.Capped` (`FailReason` "daily cap"). Never reward it. `RemainingToday` gives the promos left today, e.g. for a label. The notice raises no `Opened`/`Closed`.
 
 ## 4. Own URL scheme (installed check)
 
@@ -64,6 +65,6 @@ Without this asset you get a build warning and the game still works. Other games
 
 ## Notes
 
-- **New Input System only:** `Input.deviceOrientation` is unavailable, so the rotate hint times out to letterbox. Pass `DeviceOrientation` from your own input code if you want rotation.
+- **New Input System only:** `Input.deviceOrientation` is unavailable, so the video stays letterboxed (it never rotates). Pass `DeviceOrientation` from your own input code if you want rotation.
 - **Data:** `persistentDataPath/relead-crosspromo/` holds the catalog, its state, the media cache (2 videos + icons) and the event queue.
 - **Identifiers:** no IDFA/GAID and no ATT prompt. iOS sends `identifierForVendor`, and other platforms send a random install id.

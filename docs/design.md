@@ -23,7 +23,7 @@ Decided 2026-11-27 with the user. Phase 1 = option A (video). Everything is prep
 2. Catalog: check `https://ads.relead.com/catalog/promos.json` **at most once a day** (last-check time stored; `If-None-Match` / `If-Modified-Since` sent when we have an ETag / Last-Modified, `304` = keep cache). Keep the last good copy on disk, validate `schemaVersion`. A failed check retries at the next launch, never in a loop. Changed 2026-11-27 (user): was "short cache".
 3. Prefetch: keep **two** videos downloaded ahead in `persistentDataPath`, **only on wifi** (`Application.internetReachability == ReachableViaLocalAreaNetwork`), verified by `bytes`/`sha256`. After one is shown it rotates out and the next is fetched on wifi; older files are evicted (disk cap). A promo is only "available" when its media is cached, so showing it is instant and works offline.
 4. Selection: filter out the host game itself, games already installed, expired/not started promos, promos needing a newer `minPackageVersion`, media types this build can't play; then weighted random; respect `maxPerDay`.
-5. `CrossPromo.IsReady` → host enables its "watch for reward" button. `CrossPromo.Show(onResult)` → result `Completed | Skipped | Failed` plus `StoreClicked` flag. Host grants the reward on `Completed`.
+5. `CrossPromo.IsReady` → host enables its "watch for reward" button. `CrossPromo.Show(onResult)` → result `Completed | Skipped | Failed | Capped` plus `StoreClicked` flag (`Capped`: daily cap reached, a small "Maxed out ads for today" notice was shown; `IsCappedToday` / `RemainingToday` let the host label its button up front; decision 0010). Host grants the reward on `Completed`.
 6. Download panel (from `endCardAtSec`, over the still-playing video): icon, name, headline, "Get it" button → store page with campaign parameters.
 7. Offline fallback: no cached video (no wifi yet, no catalog, first launch offline) → `IsReady` is still true and `Show` plays a **slideshow** of screenshots of other Relead games with name + store button. The screenshots are **bundled in the package** only (a few JPGs per game, ~1080 px, plus name and store ids) — never downloaded; a new package version refreshes them. Same rules as a video: close after `skipAfterSec`, reward on completion. Decided 2026-11-27 (user).
 
@@ -32,8 +32,8 @@ Decided 2026-11-27 with the user. Phase 1 = option A (video). Everything is prep
 Games are locked to portrait or landscape; promos may exist in one or both orientations.
 
 - Pick media matching the host's current orientation if available; within it the player's language (else the default), then the aspect ratio closest to the screen (catalog `lang`, `width`/`height`; decision 0008).
-- Otherwise: overlay with an **animated rotate-phone icon**; playback starts when `Input.deviceOrientation` matches the media. The package never changes `Screen.orientation` — the host stays locked, the promo UI is drawn rotated 90° inside it.
-- No rotation within `rotateHintTimeoutSec` (default 3 s): play letterboxed in the current orientation.
+- Otherwise: playback starts at once, letterboxed, with a small **animated rotate-phone icon** in the letterbox bar (decision 0009); whenever `Input.deviceOrientation` matches the media for 0.5 s the stage rotates to full screen under the running video, and stays rotated. The package never changes `Screen.orientation` — the host stays locked, the promo UI is drawn rotated 90° inside it.
+- After `rotateHintTimeoutSec` (default 3 s; 0 = no icon) the icon disappears; the video keeps playing letterboxed until the player turns the phone. Flat/unknown orientation never switches.
 - Same rule later for playables (catalog says which orientation a playable needs).
 
 ## Prepared for option C

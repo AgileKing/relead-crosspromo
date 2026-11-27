@@ -37,6 +37,7 @@ namespace Relead.CrossPromo.Editor
 
             _device = (DeviceOrientation)EditorGUILayout.EnumPopup(new GUIContent("Simulated device", "Used if the scene's Init didn't set its own provider."), _device);
             EditorGUILayout.LabelField("Ready", CrossPromo.IsReady + " (video: " + CrossPromo.IsVideoReady + ")");
+            EditorGUILayout.LabelField("Daily cap", CrossPromo.IsCappedToday ? "reached" : CrossPromo.RemainingToday + " left today");
             EditorGUILayout.LabelField("Last result", _last);
             if (GUILayout.Button("Show (normal selection)")) CrossPromo.Show(Report);
             if (GUILayout.Button("Show offline slideshow")) CrossPromo.ShowFallbackForTesting(Report);

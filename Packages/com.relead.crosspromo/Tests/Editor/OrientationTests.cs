@@ -50,43 +50,91 @@ namespace Relead.CrossPromo.Tests
             Assert.IsNull(OrientationLogic.DeviceAngle(DeviceOrientation.FaceUp));
         }
 
+        const float H = OrientationLogic.MatchStableSec;
+
         [Test]
         public void MatchingMediaPlaysUpright()
         {
-            Assert.AreEqual(StageMode.Upright, OrientationLogic.Next(StageMode.RotateHint, L, L, DeviceOrientation.Portrait, 0, 3));
+            Assert.AreEqual(StageMode.Upright, OrientationLogic.Next(StageMode.RotateHint, L, L, DeviceOrientation.Portrait, 0, 3, 0));
         }
 
         [Test]
-        public void HintThenRotateWhenDeviceTurns()
+        public void HintThenRotateWhenDeviceTurnsAndHolds()
         {
-            var m = OrientationLogic.Next(StageMode.RotateHint, P, L, DeviceOrientation.Portrait, 0f, 3f);
+            var m = OrientationLogic.Next(StageMode.RotateHint, P, L, DeviceOrientation.Portrait, 0f, 3f, 0f);
             Assert.AreEqual(StageMode.RotateHint, m);
-            m = OrientationLogic.Next(m, P, L, DeviceOrientation.Portrait, 2.9f, 3f);
-            Assert.AreEqual(StageMode.RotateHint, m);
-            m = OrientationLogic.Next(m, P, L, DeviceOrientation.LandscapeRight, 2.95f, 3f);
+            m = OrientationLogic.Next(m, P, L, DeviceOrientation.LandscapeRight, 1f, 3f, 0.1f);
+            Assert.AreEqual(StageMode.RotateHint, m, "match not stable yet");
+            m = OrientationLogic.Next(m, P, L, DeviceOrientation.LandscapeRight, 1.5f, 3f, H);
             Assert.AreEqual(StageMode.Rotated, m);
-            m = OrientationLogic.Next(m, P, L, DeviceOrientation.Portrait, 10f, 3f);
+            m = OrientationLogic.Next(m, P, L, DeviceOrientation.Portrait, 10f, 3f, 0f);
             Assert.AreEqual(StageMode.Rotated, m, "sticks, no flapping back");
         }
 
         [Test]
-        public void AlreadyHeldRightSkipsHint()
+        public void AlreadyHeldRightAtStartRotatesAtOnce()
         {
-            Assert.AreEqual(StageMode.Rotated, OrientationLogic.Next(StageMode.RotateHint, L, P, DeviceOrientation.Portrait, 0f, 3f));
+            Assert.AreEqual(StageMode.Rotated, OrientationLogic.Next(StageMode.RotateHint, L, P, DeviceOrientation.Portrait, 0f, 3f, 0f));
         }
 
         [Test]
-        public void TimeoutLetterboxesAndSticks()
+        public void TimeoutLetterboxesThenSwitchesToRotatedOnStableMatch()
         {
-            var m = OrientationLogic.Next(StageMode.RotateHint, P, L, DeviceOrientation.FaceUp, 3f, 3f);
+            var m = OrientationLogic.Next(StageMode.RotateHint, P, L, DeviceOrientation.FaceUp, 3f, 3f, 0f);
             Assert.AreEqual(StageMode.Letterbox, m);
-            Assert.AreEqual(StageMode.Letterbox, OrientationLogic.Next(m, P, L, DeviceOrientation.LandscapeLeft, 4f, 3f));
+            Assert.AreEqual(StageMode.Letterbox, OrientationLogic.Next(m, P, L, DeviceOrientation.LandscapeLeft, 4f, 3f, 0.2f), "not stable yet");
+            m = OrientationLogic.Next(m, P, L, DeviceOrientation.LandscapeLeft, 20f, 3f, H);
+            Assert.AreEqual(StageMode.Rotated, m, "turning later still goes full screen");
+            Assert.AreEqual(StageMode.Rotated, OrientationLogic.Next(m, P, L, DeviceOrientation.Portrait, 21f, 3f, 0f));
+        }
+
+        [TestCase(DeviceOrientation.FaceUp)]
+        [TestCase(DeviceOrientation.FaceDown)]
+        [TestCase(DeviceOrientation.Unknown)]
+        public void FlatOrUnknownNeverSwitches(DeviceOrientation d)
+        {
+            Assert.AreEqual(StageMode.Letterbox, OrientationLogic.Next(StageMode.Letterbox, P, L, d, 60f, 3f, 60f));
+            Assert.AreEqual(StageMode.RotateHint, OrientationLogic.Next(StageMode.RotateHint, P, L, d, 0f, 3f, 60f));
         }
 
         [Test]
-        public void ZeroTimeoutLetterboxesImmediately()
+        public void ZeroTimeoutLetterboxesImmediatelyButStillRotates()
         {
-            Assert.AreEqual(StageMode.Letterbox, OrientationLogic.Next(StageMode.RotateHint, P, L, DeviceOrientation.Portrait, 0f, 0f));
+            Assert.AreEqual(StageMode.Letterbox, OrientationLogic.Next(StageMode.RotateHint, P, L, DeviceOrientation.Portrait, 0f, 0f, 0f));
+            Assert.AreEqual(StageMode.Rotated, OrientationLogic.Next(StageMode.Letterbox, P, L, DeviceOrientation.LandscapeLeft, 5f, 0f, H));
+        }
+
+        [Test]
+        public void LetterboxBarHoldsTheRotateHint()
+        {
+            // Landscape video on a portrait phone (≈ 730×1300 canvas units): bars above and below.
+            Assert.AreEqual((1300f - 730f * 9f / 16f) / 2f, OrientationLogic.LetterboxBar(730, 1300, L), 0.01f);
+            // Portrait video on a landscape phone: bars left and right.
+            Assert.AreEqual((1300f - 730f * 9f / 16f) / 2f, OrientationLogic.LetterboxBar(1300, 730, P), 0.01f);
+            Assert.AreEqual(0f, OrientationLogic.LetterboxBar(1920, 1080, L), "16:9 fills the screen");
+            Assert.AreEqual(0f, OrientationLogic.LetterboxBar(2400, 1080, L), "wider screen: bars are on the sides, none on top");
+            Assert.AreEqual(0f, OrientationLogic.LetterboxBar(0, 0, L));
+        }
+
+        [Test]
+        public void GlowCentredOnItsElement()
+        {
+            float g = PromoUI.GlowSpread;
+            Assert.AreEqual(new Vector2(g, g), PromoUI.GlowOffset(Vector2.one), "top-right corner element");
+            Assert.AreEqual(new Vector2(-g, g), PromoUI.GlowOffset(new Vector2(0, 1)), "top-left corner element");
+            Assert.AreEqual(Vector2.zero, PromoUI.GlowOffset(new Vector2(0.5f, 0.5f)));
+        }
+
+        [Test]
+        public void GlowSpriteFadesOut()
+        {
+            Assert.Greater(PromoUI.GlowAlpha(32, 32), 0.99f, "opaque centre");
+            Assert.AreEqual(0f, PromoUI.GlowAlpha(0, 0), "transparent corner");
+            Assert.Less(PromoUI.GlowAlpha(0, 32), 0.01f, "transparent edge");
+            Assert.Greater(PromoUI.GlowAlpha(16, 32), PromoUI.GlowAlpha(8, 32), "fades outwards");
+            var sprite = PromoUI.GlowSprite;
+            Assert.AreEqual(PromoUI.GlowSize, sprite.texture.width);
+            Assert.Greater(sprite.border.x, 0, "sliced, so it stretches without blurring the centre");
         }
 
         [Test]

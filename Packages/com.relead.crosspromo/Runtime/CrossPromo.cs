@@ -85,12 +85,25 @@ namespace Relead.CrossPromo
         /// <summary>True when a cached video is ready (not just the fallback slideshow).</summary>
         public static bool IsVideoReady => IsInitialized && !_showing && UnderCap() && SelectVideo() != null;
 
-        /// <summary>Shows a promo. onResult is always called once. Reward on PromoOutcome.Completed only.</summary>
+        /// <summary>
+        /// True when today's maxPerDay is used up (IsReady is then false). Show still works: it shows the
+        /// "Maxed out ads for today" notice and reports PromoOutcome.Capped. Keep a button active while
+        /// <c>CrossPromo.IsReady || CrossPromo.IsCappedToday</c>.
+        /// </summary>
+        public static bool IsCappedToday => IsInitialized && !UnderCap();
+
+        /// <summary>Promos the player can still watch today (local day). 0 before Init.</summary>
+        public static int RemainingToday => IsInitialized ? _cap.Remaining(DateTime.Now, MaxPerDay()) : 0;
+
+        /// <summary>
+        /// Shows a promo. onResult is always called once. Reward on PromoOutcome.Completed only.
+        /// Daily cap reached: shows a small dismissable notice instead and reports PromoOutcome.Capped.
+        /// </summary>
         public static void Show(Action<PromoResult> onResult)
         {
             if (!IsInitialized) { Done(onResult, Failed("not initialized")); return; }
             if (_showing) { Done(onResult, Failed("already showing")); return; }
-            if (!UnderCap()) { Done(onResult, Failed("daily cap")); return; }
+            if (!UnderCap()) { ShowCapped(onResult); return; }
             var choice = SelectVideo();
             if (choice != null) { ShowVideo(choice, _config.HostOrientation != null ? _config.HostOrientation() : HostShape(), onResult); return; }
             var fallback = SelectFallback();
@@ -163,7 +176,23 @@ namespace Relead.CrossPromo
             _tracker.Flush();
         }
 
-        static void ShowVideo(PromoChoice c, PromoOrientation host, Action<PromoResult> onResult)
+        /// <summary>Capped notice. No Opened/Closed events: no audio, nothing to pause, no reward.</summary>
+        static void ShowCapped(Action<PromoResult> onResult)
+        {
+            _showing = true;
+            Track("promo_capped", null, null, new Dictionary<string, object> { { "maxPerDay", MaxPerDay() } });
+            Action done = () => { _showing = false; Done(onResult, CappedResult()); };
+            try { CappedNotice.Show(_config.Language, new PlaybackRequest().SortingOrder, done); }
+            catch (Exception e)
+            {
+                Debug.LogException(e);
+                done();
+            }
+        }
+
+        internal static PromoResult CappedResult() => new PromoResult { Outcome = PromoOutcome.Capped, FailReason = "daily cap" };
+
+        static void ShowVideo(PromoChoice c,PromoOrientation host, Action<PromoResult> onResult)
         {
             var link = StoreLinks.Build(_platform, c.Game, _config.HostGameId, c.Promo.Id, _config.IosProviderToken);
             var target = new PromoTarget
@@ -277,7 +306,9 @@ namespace Relead.CrossPromo
             RequireStoreLink = _config.RequireStoreLink,
         };
 
-        static bool UnderCap() => _cap.CanShow(DateTime.Now, Catalog != null ? Catalog.Rules.MaxPerDay : new CatalogRules().MaxPerDay);
+        static bool UnderCap() => _cap.CanShow(DateTime.Now, MaxPerDay());
+
+        static int MaxPerDay() => Catalog != null ? Catalog.Rules.MaxPerDay : new CatalogRules().MaxPerDay;
 
         static void Track(string name, string promoId, string targetGameId, Dictionary<string, object> props)
         {

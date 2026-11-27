@@ -49,7 +49,8 @@ namespace Relead.CrossPromo.Samples
 
         void Update()
         {
-            _button.interactable = CrossPromo.IsReady;
+            // Capped: Show still works and shows "Maxed out ads for today" (outcome Capped, no reward).
+            _button.interactable = !CrossPromo.IsShowing && (CrossPromo.IsReady || CrossPromo.IsCappedToday);
             _label.text = "Watch for 10 coins (" + _coins + ")";
         }
 

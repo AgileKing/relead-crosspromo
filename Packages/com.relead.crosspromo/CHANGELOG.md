@@ -1,5 +1,14 @@
 # Changelog
 
+## [0.1.3] - 2026-11-27
+
+- **Video starts at once** when its orientation differs from the game: it plays letterboxed with a small, non-blocking rotate-phone icon in the bar above (or beside) it. No more dark full-screen hint.
+- **Go full screen whenever the player turns the phone** (match held 0.5 s), also after the hint timed out; the video doesn't restart and stays rotated. `rotateHintTimeoutSec` now only sets how long the icon shows (0 = none).
+- **Daily cap notice**: `Show` with `maxPerDay` reached shows "Maxed out ads for today" / "Max aantal ads voor vandaag bereikt" (tap anywhere or ×, auto-closes after 3 s) and reports the new `PromoOutcome.Capped` (never reward it). New `CrossPromo.IsCappedToday`, `CrossPromo.RemainingToday`; enable buttons on `IsReady || IsCappedToday`. New tracking event `promo_capped`.
+- `OrientationLogic.Next` takes the match-held seconds (internal logic; hosts unaffected).
+- Soft black glow behind Skip, the countdown and the rotate hint, so they stay readable on white video.
+- Smaller Skip / "Overslaan" button (font 24).
+
 ## [0.1.2] - 2026-11-27
 
 - **Ad timeline** (catalog rules, defaults if missing): small Skip top left from `skipAfterSec` (now 0), download panel over the still-playing video at `endCardAtSec` (25 s), top-right countdown → × plus "Earned! Close" at `rewardAfterSec` (30 s). Closing from then on = `Completed`; before = `Skipped`. Video and slideshow loop until closed. Replaces the old full-screen end card after the video ended. Hosts: no API change, still grant the reward on `Completed`.

@@ -6,11 +6,11 @@ namespace Relead.CrossPromo
     {
         /// <summary>Media matches the host: full screen, upright.</summary>
         Upright,
-        /// <summary>Waiting for the player to turn the device (animated phone icon).</summary>
+        /// <summary>Waiting for the player to turn the device: content already plays letterboxed, small animated phone icon in the bar.</summary>
         RotateHint,
         /// <summary>Device turned: stage drawn rotated ±90° inside the locked host screen.</summary>
         Rotated,
-        /// <summary>Hint timed out: play in the host orientation, letterboxed.</summary>
+        /// <summary>Hint timed out: keeps playing letterboxed in the host orientation; still switches to Rotated when the device turns.</summary>
         Letterbox,
     }
 
@@ -77,14 +77,38 @@ namespace Relead.CrossPromo
             return z;
         }
 
-        /// <summary>One step of the hint state machine. Once Rotated or Letterbox, the mode sticks (no flapping).</summary>
+        /// <summary>
+        /// Thickness of one letterbox bar when 16:9 media is fitted into a width×height screen: top/bottom bars for
+        /// landscape media, left/right bars for portrait media. 0 when the media fills that axis.
+        /// </summary>
+        public static float LetterboxBar(float width, float height, PromoOrientation media)
+        {
+            if (width <= 0 || height <= 0) return 0;
+            return media == PromoOrientation.Landscape
+                ? Mathf.Max(0, (height - Mathf.Min(height, width * 9f / 16f)) / 2f)
+                : Mathf.Max(0, (width - Mathf.Min(width, height * 9f / 16f)) / 2f);
+        }
+
+        /// <summary>How long the device must match the media before a playing video switches to the rotated stage.</summary>
+        public const float MatchStableSec = 0.5f;
+
+        /// <summary>
+        /// One step of the stage state machine (content plays in every mode, decision 0009). RotateHint and Letterbox
+        /// both play letterboxed; the hint shows until hintTimeoutSec. A device match held for MatchStableSec switches
+        /// to Rotated (already matching at the very start: at once). Rotated sticks (no flapping when tilting back).
+        /// Flat/unknown never matches.
+        /// </summary>
         public static StageMode Next(StageMode current, PromoOrientation host, PromoOrientation media,
-            DeviceOrientation device, float hintElapsedSec, float hintTimeoutSec)
+            DeviceOrientation device, float hintElapsedSec, float hintTimeoutSec, float matchHeldSec)
         {
             if (host == media) return StageMode.Upright;
-            if (current == StageMode.Rotated || current == StageMode.Letterbox) return current;
-            if (DeviceMatches(device, media)) return StageMode.Rotated;
-            if (hintElapsedSec >= hintTimeoutSec) return StageMode.Letterbox;
+            if (current == StageMode.Rotated) return current;
+            if (DeviceMatches(device, media))
+            {
+                bool atStart = current == StageMode.RotateHint && hintElapsedSec <= 0f;
+                if (atStart || matchHeldSec >= MatchStableSec) return StageMode.Rotated;
+            }
+            if (current == StageMode.Letterbox || hintElapsedSec >= hintTimeoutSec) return StageMode.Letterbox;
             return StageMode.RotateHint;
         }
     }

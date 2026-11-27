@@ -6,7 +6,9 @@ using UnityEngine.UI;
 namespace Relead.CrossPromo
 {
     /// <summary>
-    /// Shared full-screen overlay: backdrop, rotatable stage, rotate hint and the ad timeline (WatchClock):
+    /// Shared full-screen overlay: backdrop, rotatable stage, rotate hint and the ad timeline (WatchClock).
+    /// Content starts at once; while the hint is up it plays letterboxed and the small phone icon sits in the
+    /// letterbox bar above (landscape media) or beside (portrait media) it. Timeline:
     /// small Skip top left from skipAfterSec (no reward), download panel over the still-playing content from
     /// endCardAtSec, top-right countdown that turns into × plus an "Earned! Close" button at rewardAfterSec
     /// (Completed). Content loops until the player closes. Subclasses provide the content (video, slideshow,
@@ -32,9 +34,14 @@ namespace Relead.CrossPromo
         Button _skip;
         Button _earned;
         Text _countdown;
+        GameObject _skipGlow;
+        GameObject _countdownGlow;
         Image _progress;
         RectTransform _endCard;
         float _hintElapsed;
+        float _matchHeld;
+        bool _endCardTall;
+        bool _endCardTracked;
         bool _contentStarted;
         bool _earnedTracked;
         bool _storeClicked;
@@ -95,6 +102,8 @@ namespace Relead.CrossPromo
             prt.anchorMax = new Vector2(0, 1);
             prt.offsetMin = prt.offsetMax = Vector2.zero;
 
+            // Soft black glow behind Skip and the countdown, so they stay readable on white video.
+            _countdownGlow = PromoUI.Glow("CountdownGlow", Stage, Vector2.one, new Vector2(-32, -32), new Vector2(96, 96));
             _countdown = PromoUI.Label("Countdown", Stage, "", 40, Color.white, TextAnchor.MiddleCenter, FontStyle.Bold);
             PromoUI.Place(_countdown.rectTransform, Vector2.one, Vector2.one, new Vector2(-32, -32), new Vector2(96, 96));
             var cdBg = PromoUI.Panel("CountdownBg", Stage, new Color(0, 0, 0, 0.55f), true);
@@ -114,20 +123,24 @@ namespace Relead.CrossPromo
             PromoUI.Place((RectTransform)_earned.transform, Vector2.one, Vector2.one, new Vector2(-32 - 96 - 16, -32), new Vector2(320, 96));
             _earned.gameObject.SetActive(false);
 
+            _skipGlow = PromoUI.Glow("SkipGlow", Stage, new Vector2(0, 1), new Vector2(32, -32), new Vector2(140, 60));
             _skip = PromoUI.Button("Skip", Stage, PromoUI.T(Request.Language, "Skip", "Overslaan"),
-                new Color(0, 0, 0, 0.45f), new Color(1, 1, 1, 0.85f), 32, OnSkipClicked);
-            PromoUI.Place((RectTransform)_skip.transform, new Vector2(0, 1), new Vector2(0, 1), new Vector2(32, -32), new Vector2(160, 72));
+                new Color(0, 0, 0, 0.45f), new Color(1, 1, 1, 0.85f), 24, OnSkipClicked);
+            PromoUI.Place((RectTransform)_skip.transform, new Vector2(0, 1), new Vector2(0, 1), new Vector2(32, -32), new Vector2(140, 60));
             _skip.gameObject.SetActive(false);
+            _skipGlow.SetActive(false);
 
-            _hint = PromoUI.Stretch(PromoUI.Rect("RotateHint", Root));
-            var hintBg = PromoUI.Panel("Bg", _hint, new Color(0, 0, 0, 0.85f));
-            PromoUI.Stretch(hintBg.rectTransform);
+            // Small, non-blocking hint in the letterbox bar; the content already plays meanwhile.
+            _hint = PromoUI.Rect("RotateHint", Root);
+            PromoUI.Glow("Glow", _hint, new Vector2(0.5f, 0.5f), Vector2.zero, new Vector2(260, 200));
             var phone = PromoUI.Rect("Phone", _hint);
-            phone.gameObject.AddComponent<RawImage>().texture = PromoUI.PhoneIcon;
-            PromoUI.Place(phone, new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f), new Vector2(0, 60), new Vector2(120, 210));
+            var phoneImg = phone.gameObject.AddComponent<RawImage>();
+            phoneImg.texture = PromoUI.PhoneIcon;
+            phoneImg.raycastTarget = false;
+            PromoUI.Place(phone, new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f), new Vector2(0, 30), new Vector2(72, 126));
             _phone = phone;
-            var hintText = PromoUI.Label("Text", _hint, PromoUI.T(Request.Language, "Turn your phone", "Draai je telefoon"), 48, Color.white);
-            PromoUI.Place(hintText.rectTransform, new Vector2(0.5f, 0.5f), new Vector2(0.5f, 1f), new Vector2(0, -90), new Vector2(900, 120));
+            var hintText = PromoUI.Label("Text", _hint, PromoUI.T(Request.Language, "Turn your phone", "Draai je telefoon"), 32, Color.white);
+            PromoUI.Place(hintText.rectTransform, new Vector2(0.5f, 0.5f), new Vector2(0.5f, 1f), new Vector2(0, -50), new Vector2(300, 80));
             _hint.gameObject.SetActive(false);
         }
 
@@ -137,7 +150,7 @@ namespace Relead.CrossPromo
             float dt = Mathf.Min(Time.unscaledDeltaTime, MaxDelta);
             try
             {
-                if (!_contentStarted) UpdateMode(dt);
+                if (Mode == StageMode.RotateHint || Mode == StageMode.Letterbox) UpdateMode(dt);
                 else if (Mode == StageMode.Rotated) LayoutStage();
 
                 if (_contentStarted)
@@ -146,12 +159,20 @@ namespace Relead.CrossPromo
                     if (_finished) return;
                     if (ContentRunning) Clock.Tick(dt);
                     _skip.gameObject.SetActive(Clock.CanSkip);
+                    _skipGlow.SetActive(Clock.CanSkip);
                     bool earned = Clock.Earned;
                     _close.gameObject.SetActive(earned);
                     _earned.gameObject.SetActive(earned);
                     _countdown.transform.parent.gameObject.SetActive(!earned);
+                    _countdownGlow.SetActive(!earned);
                     _countdown.text = Clock.SecondsUntilReward.ToString();
                     _progress.rectTransform.anchorMax = new Vector2(Clock.RewardProgress, 1);
+                    if (_endCard != null && StageIsTall() != _endCardTall)
+                    {
+                        // Stage rotated after the panel appeared: rebuild it for the new shape.
+                        Destroy(_endCard.gameObject);
+                        _endCard = null;
+                    }
                     if (Clock.ShowEndCard && _endCard == null && ShowsDownloadPanel) ShowEndCard();
                     if (earned && !_earnedTracked)
                     {
@@ -161,6 +182,7 @@ namespace Relead.CrossPromo
                 }
                 if (_hint.gameObject.activeSelf)
                 {
+                    LayoutHint();
                     // Turn the phone 90° counter-clockwise (portrait → landscape) or back, ease, hold, repeat.
                     float cycle = Mathf.Repeat(Time.unscaledTime, 2f);
                     float t = Mathf.SmoothStep(0, 1, Mathf.Clamp01((cycle - 0.3f) / 0.8f));
@@ -178,7 +200,8 @@ namespace Relead.CrossPromo
         {
             var device = Request.DeviceOrientation != null ? Request.DeviceOrientation() : DeviceOrientation.Unknown;
             _hintElapsed += dt;
-            Mode = OrientationLogic.Next(Mode, _host, ContentOrientation, device, _hintElapsed, Request.RotateHintTimeoutSec);
+            _matchHeld = OrientationLogic.DeviceMatches(device, ContentOrientation) ? _matchHeld + dt : 0f;
+            Mode = OrientationLogic.Next(Mode, _host, ContentOrientation, device, _hintElapsed, Request.RotateHintTimeoutSec, _matchHeld);
             bool hint = Mode == StageMode.RotateHint;
             _hint.gameObject.SetActive(hint);
             if (hint && !_hintTracked)
@@ -186,11 +209,32 @@ namespace Relead.CrossPromo
                 _hintTracked = true;
                 Track("promo_rotate_hint", null);
             }
-            if (!hint)
+            // While hinting the stage is laid out like letterbox; content starts at once and keeps playing when the
+            // stage rotates or the hint times out.
+            LayoutStage();
+            if (!_contentStarted)
             {
-                LayoutStage();
                 _contentStarted = true;
                 StartContent();
+            }
+        }
+
+        /// <summary>
+        /// Centres the hint in the letterbox bar: above the video for landscape media on a portrait host, right of
+        /// it for portrait media on a landscape host (Skip and countdown sit in the corners, the middle is free).
+        /// Bars too small for the icon (squarish screens): it overlaps the video edge, the glow keeps it readable.
+        /// </summary>
+        void LayoutHint()
+        {
+            var size = Root.rect.size;
+            float bar = OrientationLogic.LetterboxBar(size.x, size.y, ContentOrientation);
+            if (ContentOrientation == PromoOrientation.Landscape)
+            {
+                PromoUI.Place(_hint, new Vector2(0.5f, 1), new Vector2(0.5f, 0.5f), new Vector2(0, -Mathf.Max(bar, 240) / 2f), new Vector2(size.x, bar));
+            }
+            else
+            {
+                PromoUI.Place(_hint, new Vector2(1, 0.5f), new Vector2(0.5f, 0.5f), new Vector2(-Mathf.Max(bar, 300) / 2f, 0), new Vector2(bar, size.y));
             }
         }
 
@@ -278,8 +322,8 @@ namespace Relead.CrossPromo
         void ShowEndCard()
         {
             var target = CurrentTarget;
-            var stageSize = Stage.rect.size;
-            bool tall = stageSize.y > stageSize.x;
+            bool tall = StageIsTall();
+            _endCardTall = tall;
             bool hasStore = target != null && !string.IsNullOrEmpty(target.StoreUrl);
             bool hasIcon = target != null && target.Icon != null;
             const float pad = 24, iconSize = 176, buttonH = 130;
@@ -325,11 +369,24 @@ namespace Relead.CrossPromo
                 else PromoUI.Place(brt, new Vector2(1, 0.5f), new Vector2(1, 0.5f), new Vector2(-pad, 0), new Vector2(400, buttonH));
             }
             // Buttons stay on top of the panel.
+            _skipGlow.transform.SetAsLastSibling();
+            _countdownGlow.transform.SetAsLastSibling();
             _skip.transform.SetAsLastSibling();
             _earned.transform.SetAsLastSibling();
             _countdown.transform.parent.SetAsLastSibling();
             _close.transform.SetAsLastSibling();
-            Track("promo_end_card", null);
+            if (!_endCardTracked)
+            {
+                _endCardTracked = true;
+                Track("promo_end_card", null);
+            }
+        }
+
+        /// <summary>Stage shape as the player sees it (sizeDelta is swapped when rotated a quarter turn).</summary>
+        bool StageIsTall()
+        {
+            var s = Stage.rect.size;
+            return s.y > s.x;
         }
 
         void Finish(PromoOutcome outcome, string reason)

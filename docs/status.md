@@ -1,5 +1,9 @@
 # Status / handoff
 
+## 0.1.3 (2026-11-27)
+
+Mismatched-orientation video plays at once (letterboxed, small rotate icon in the bar) and goes full screen whenever the phone is turned and held 0.5 s (decision 0009). Daily cap notice + `PromoOutcome.Capped`, `IsCappedToday`, `RemainingToday` (decision 0010, for GP King). Glow behind Skip/countdown, smaller Skip. 142 EditMode tests pass. **Not checked visually yet**: hint position in the letterbox bar (portrait and landscape host, iPad), glow on white video, capped notice, rotate-after-panel rebuild. Device test still open (item 2 below).
+
 ## 0.1.2 (2026-11-27)
 
 The 30 s ad timeline, plus media per language and screen ratio (decision 0008). 129 EditMode tests pass. Timeline, ranking and parsing are covered by tests. **The new overlay layout is not checked visually yet**: the Skip/Earned/× row and the download panel in portrait (≈ 730 canvas units wide) and landscape. Check it in the editor tester window or on a device, with an nl and an iPad cut (kingofgames-kp001 / puzzleking-pp001 are live).
