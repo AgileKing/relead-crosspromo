@@ -92,7 +92,7 @@ namespace Relead.CrossPromo
                 Name = JsonRead.Str(o, "name") ?? id,
                 UrlScheme = JsonRead.Str(o, "urlScheme"),
                 Orientation = ParseOrientation(JsonRead.Str(o, "orientation")),
-                Icon = JsonRead.Str(o, "icon"),
+                Icon = SafePath(JsonRead.Str(o, "icon")),
             };
             var store = JsonRead.Obj(o, "store");
             if (store != null)
@@ -103,6 +103,9 @@ namespace Relead.CrossPromo
             }
             return g;
         }
+
+        /// <summary>Catalog file paths must be plain relative paths (no other host, no ".."); anything else counts as missing.</summary>
+        static string SafePath(string s) => UrlUtil.IsSafeRelative(s) ? s : null;
 
         /// <summary>"TODO" / empty placeholders count as missing.</summary>
         static string Clean(string s)
@@ -131,7 +134,7 @@ namespace Relead.CrossPromo
                 End = ParseDate(JsonRead.Str(o, "end")),
                 Headline = ParseLocalized(JsonRead.Obj(o, "headline")),
                 Cta = ParseLocalized(JsonRead.Obj(o, "cta")),
-                Poster = JsonRead.Str(o, "poster"),
+                Poster = SafePath(JsonRead.Str(o, "poster")),
             };
             var mpv = JsonRead.Str(o, "minPackageVersion");
             if (!string.IsNullOrEmpty(mpv)) p.MinPackageVersion = mpv;
@@ -163,7 +166,7 @@ namespace Relead.CrossPromo
             var type = JsonRead.Str(o, "type");
             var orientation = ParseOrientation(JsonRead.Str(o, "orientation"));
             var url = JsonRead.Str(o, "url");
-            if (string.IsNullOrEmpty(type) || orientation == null || string.IsNullOrEmpty(url)) return null;
+            if (string.IsNullOrEmpty(type) || orientation == null || !UrlUtil.IsSafeRelative(url)) return null; // relative to the base URL only
             var sha = JsonRead.Str(o, "sha256");
             var lang = JsonRead.Str(o, "lang");
             var w = JsonRead.Long(o, "width");

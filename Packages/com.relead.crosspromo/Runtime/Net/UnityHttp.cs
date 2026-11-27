@@ -44,7 +44,29 @@ namespace Relead.CrossPromo
                 yield break;
             }
 
-            yield return req.SendWebRequest();
+            var op = req.SendWebRequest();
+            bool tooLarge = false;
+            while (!op.isDone)
+            {
+                if (r.MaxBytes > 0 && TooLarge(req, r.MaxBytes))
+                {
+                    tooLarge = true;
+                    req.Abort(); // DownloadHandlerFile.removeFileOnAbort: the partial file is deleted
+                    break;
+                }
+                yield return null;
+            }
+            if (!tooLarge && r.MaxBytes > 0 && TooLarge(req, r.MaxBytes)) tooLarge = true;
+
+            if (tooLarge)
+            {
+                req.Dispose();
+                if (!string.IsNullOrEmpty(r.DownloadToPath)) { try { File.Delete(r.DownloadToPath); } catch (Exception) { } }
+                resp.Status = 0;
+                resp.Error = HttpResponse.TooLargeError;
+                done(resp);
+                yield break;
+            }
 
             try
             {
@@ -61,6 +83,15 @@ namespace Relead.CrossPromo
             }
             finally { req.Dispose(); }
             done(resp);
+        }
+
+        /// <summary>Content-Length announced over the cap, or more bytes received than the cap.</summary>
+        static bool TooLarge(UnityWebRequest req, long max)
+        {
+            if ((long)req.downloadedBytes > max) return true;
+            var cl = req.GetResponseHeader("Content-Length");
+            long n;
+            return cl != null && long.TryParse(cl, System.Globalization.NumberStyles.None, System.Globalization.CultureInfo.InvariantCulture, out n) && n > max;
         }
     }
 }

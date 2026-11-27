@@ -44,7 +44,11 @@ CrossPromo.Show(result =>
 - `IsReady` is also true when there is no video yet. In that case `Show` plays the bundled screenshot slideshow (offline fallback), with the same reward rules.
 - `result.StoreClicked` is for information only. **Never** make the reward depend on it (Apple 3.2.2 / Google Play policy).
 - `CrossPromo.Opened` / `CrossPromo.Closed` let you mute your music. The overlay uses unscaled time, so pausing with `Time.timeScale = 0` is fine.
-- The daily cap (`rules.maxPerDay` in the catalog) applies. When it is reached, `IsReady` turns false and `IsCappedToday` true. `Show` then shows a small notice ("Maxed out ads for today" / "Max aantal ads voor vandaag bereikt"; tap anywhere or ×, closes itself after 3 s) and reports `PromoOutcome.Capped` (`FailReason` "daily cap"). Never reward it. `RemainingToday` gives the promos left today, e.g. for a label. The notice raises no `Opened`/`Closed`.
+- Promo sound follows `AudioListener.volume` and ignores `AudioListener.pause`. If your game has its own sound-off setting, pass it: `IsMuted = () => !Settings.SoundOn` in `CrossPromoConfig`.
+- Losing focus (notification shade, call, app switch, store opened) pauses the video and the 30 s reward timer; they continue when the game is back (decision 0014).
+- A video that can't play is deleted from the cache and the offline slideshow plays instead, in the same `Show` (one `Opened`/`Closed`, one result).
+- Catalog media need `bytes` and `sha256` and a plain relative `url`; media without them is never downloaded (decision 0012).
+- The daily cap (`rules.maxPerDay` in the catalog) applies. Only completed (rewarded) promos count; a skip or failure never uses up the day. When it is reached, `IsReady` turns false and `IsCappedToday` true. `Show` then shows a small notice ("Maxed out ads for today" / "Max aantal ads voor vandaag bereikt"; tap anywhere or ×, closes itself after 3 s) and reports `PromoOutcome.Capped` (`FailReason` "daily cap"). Never reward it. `RemainingToday` gives the promos left today, e.g. for a label. The notice raises no `Opened`/`Closed`.
 
 ## 4. Own URL scheme (installed check)
 

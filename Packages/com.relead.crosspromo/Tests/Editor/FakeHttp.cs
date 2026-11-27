@@ -39,6 +39,13 @@ namespace Relead.CrossPromo.Tests
             if (Routes.TryGetValue(request.Url, out route))
             {
                 if (route.Dynamic != null) route = route.Dynamic(request);
+                if (request.MaxBytes > 0 && route.Body != null && route.Body.Length > request.MaxBytes)
+                {
+                    // Same as UnityHttp: aborted mid-download, nothing kept.
+                    resp.Error = HttpResponse.TooLargeError;
+                    if (Defer) Pending.Add(() => done(resp)); else done(resp);
+                    return;
+                }
                 resp.Status = route.Status;
                 foreach (var h in route.Headers) resp.Headers[h.Key] = h.Value;
                 if (!string.IsNullOrEmpty(request.DownloadToPath))

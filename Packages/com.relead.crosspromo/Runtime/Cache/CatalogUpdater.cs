@@ -18,6 +18,8 @@ namespace Relead.CrossPromo
     {
         public static readonly TimeSpan CheckInterval = TimeSpan.FromHours(24);
         public const string CatalogPath = "catalog/promos.json";
+        /// <summary>Largest catalog accepted (the live one is ~10 KB).</summary>
+        public const int MaxCatalogBytes = 1024 * 1024;
 
         readonly string _dir;
         readonly IHttp _http;
@@ -53,6 +55,7 @@ namespace Relead.CrossPromo
             try
             {
                 if (!File.Exists(CatalogFile)) return false;
+                if (new FileInfo(CatalogFile).Length > MaxCatalogBytes) { LastError = "disk catalog: too large"; return false; }
                 var r = CatalogParser.Parse(File.ReadAllText(CatalogFile));
                 if (!r.Ok) { LastError = "disk catalog: " + r.Error; return false; }
                 Catalog = r.Catalog;
@@ -94,6 +97,7 @@ namespace Relead.CrossPromo
             var list = new List<string>();
             if (!string.IsNullOrEmpty(ActiveBaseUrl) && _baseUrls.Contains(ActiveBaseUrl)) list.Add(ActiveBaseUrl);
             foreach (var u in _baseUrls) if (!list.Contains(u)) list.Add(u);
+            list.RemoveAll(u => !UrlUtil.IsHttps(u)); // https only: no catalog over plain http
             return list;
         }
 
@@ -105,7 +109,7 @@ namespace Relead.CrossPromo
                 return;
             }
             var baseUrl = urls[i];
-            var req = new HttpRequest { Url = UrlUtil.Join(baseUrl, CatalogPath) };
+            var req = new HttpRequest { Url = UrlUtil.Join(baseUrl, CatalogPath), MaxBytes = MaxCatalogBytes };
             bool sameHost = baseUrl == ActiveBaseUrl && Catalog != null;
             if (sameHost && !string.IsNullOrEmpty(ETag)) req.Headers["If-None-Match"] = ETag;
             if (sameHost && !string.IsNullOrEmpty(LastModified)) req.Headers["If-Modified-Since"] = LastModified;
@@ -132,11 +136,7 @@ namespace Relead.CrossPromo
                         LastCheckUtc = _utcNow();
                         try
                         {
-                            Directory.CreateDirectory(_dir);
-                            var tmp = CatalogFile + ".tmp";
-                            File.WriteAllText(tmp, text);
-                            if (File.Exists(CatalogFile)) File.Delete(CatalogFile);
-                            File.Move(tmp, CatalogFile);
+                            AtomicFile.WriteAllText(CatalogFile, text);
                         }
                         catch (Exception e) { LastError = "write catalog: " + e.Message; }
                         WriteState();
@@ -175,7 +175,6 @@ namespace Relead.CrossPromo
         {
             try
             {
-                Directory.CreateDirectory(_dir);
                 var d = new Dictionary<string, object>
                 {
                     { "etag", ETag },
@@ -183,7 +182,7 @@ namespace Relead.CrossPromo
                     { "baseUrl", ActiveBaseUrl },
                     { "lastCheckUtc", LastCheckUtc.HasValue ? LastCheckUtc.Value.ToString("o", CultureInfo.InvariantCulture) : null },
                 };
-                File.WriteAllText(StateFile, MiniJson.Serialize(d));
+                AtomicFile.WriteAllText(StateFile, MiniJson.Serialize(d));
             }
             catch (Exception e) { LastError = "state: " + e.Message; }
         }

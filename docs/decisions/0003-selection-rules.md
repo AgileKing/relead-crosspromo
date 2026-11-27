@@ -8,5 +8,5 @@ On top of the filters in design.md (self, installed, dates, minPackageVersion, u
 - `end` is exclusive, `start` inclusive, both UTC.
 - **Cached media in the other orientation beats an uncached match**: showing something now (with rotate hint/letterbox) is better than nothing.
 - **Same promo not twice in a row** when another one is ready.
-- `maxPerDay` counts per **local** calendar day, every shown promo (video and fallback slideshow). `0` = off (kill switch).
+- `maxPerDay` counts per **local** calendar day, completed promos only (video and fallback slideshow; skipped or failed ones don't count, decision 0011). `0` = off (kill switch).
 - **Fallback slideshow**: never the host, never a game without bundled screenshots; prefers not-installed games with a store id; if none are left it shows installed ones rather than nothing, so the rewarded slot keeps working offline.

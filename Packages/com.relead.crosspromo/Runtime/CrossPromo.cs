@@ -105,7 +105,7 @@ namespace Relead.CrossPromo
             if (_showing) { Done(onResult, Failed("already showing")); return; }
             if (!UnderCap()) { ShowCapped(onResult); return; }
             var choice = SelectVideo();
-            if (choice != null) { ShowVideo(choice, _config.HostOrientation != null ? _config.HostOrientation() : HostShape(), onResult); return; }
+            if (choice != null) { ShowVideo(choice, LiveHost, onResult); return; }
             var fallback = SelectFallback();
             if (fallback.Count > 0) { ShowFallback(fallback, onResult); return; }
             Track("promo_failed", null, null, new Dictionary<string, object> { { "reason", "nothing ready" } });
@@ -122,7 +122,7 @@ namespace Relead.CrossPromo
             ctx.HostOrientation = hostOrientation;
             var media = PromoSelector.ChooseMedia(p, ctx, true);
             if (media == null) { Done(onResult, Failed("media not cached")); return; }
-            ShowVideo(new PromoChoice { Promo = p, Media = media, Game = Catalog.FindGame(p.GameId), NeedsRotation = media.Orientation != hostOrientation }, hostOrientation, onResult);
+            ShowVideo(new PromoChoice { Promo = p, Media = media, Game = Catalog.FindGame(p.GameId), NeedsRotation = media.Orientation != hostOrientation }, () => hostOrientation, onResult);
         }
 
         public static void ShowFallbackForTesting(Action<PromoResult> onResult)
@@ -181,7 +181,8 @@ namespace Relead.CrossPromo
         {
             _showing = true;
             Track("promo_capped", null, null, new Dictionary<string, object> { { "maxPerDay", MaxPerDay() } });
-            Action done = () => { _showing = false; Done(onResult, CappedResult()); };
+            var once = Once<int>(_ => { _showing = false; Done(onResult, CappedResult()); });
+            Action done = () => once(0);
             try { CappedNotice.Show(_config.Language, new PlaybackRequest().SortingOrder, done); }
             catch (Exception e)
             {
@@ -192,7 +193,7 @@ namespace Relead.CrossPromo
 
         internal static PromoResult CappedResult() => new PromoResult { Outcome = PromoOutcome.Capped, FailReason = "daily cap" };
 
-        static void ShowVideo(PromoChoice c,PromoOrientation host, Action<PromoResult> onResult)
+        static void ShowVideo(PromoChoice c, Func<PromoOrientation> host, Action<PromoResult> onResult)
         {
             var link = StoreLinks.Build(_platform, c.Game, _config.HostGameId, c.Promo.Id, _config.IosProviderToken);
             var target = new PromoTarget
@@ -207,12 +208,13 @@ namespace Relead.CrossPromo
             req.Media = c.Media;
             req.LocalPath = _cache.PathFor(c.Media.Url);
             req.Targets.Add(target);
-            Play(new VideoPromoPlayer(), req, c.Promo.Id, c.Game != null ? c.Game.Id : null, false, onResult);
+            Play(new VideoPromoPlayer(), req, c.Promo.Id, c.Game != null ? c.Game.Id : null, false, false, onResult);
         }
 
-        static void ShowFallback(List<FallbackGame> games, Action<PromoResult> onResult)
+        /// <param name="afterVideoFailure">True when it replaces a video that failed: the host already got Opened.</param>
+        static void ShowFallback(List<FallbackGame> games, Action<PromoResult> onResult, bool afterVideoFailure = false)
         {
-            var req = BaseRequest("fallback", _config.HostOrientation != null ? _config.HostOrientation() : HostShape());
+            var req = BaseRequest("fallback", LiveHost);
             foreach (var g in games)
             {
                 var info = g.ToGameInfo();
@@ -221,10 +223,18 @@ namespace Relead.CrossPromo
                 foreach (var s in g.screenshots) if (s != null) t.Screenshots.Add(s);
                 req.Targets.Add(t);
             }
-            Play(new SlideshowPromoPlayer(), req, "fallback", null, true, onResult);
+            Play(new SlideshowPromoPlayer(), req, "fallback", null, true, afterVideoFailure, onResult);
         }
 
-        static PlaybackRequest BaseRequest(string promoId, PromoOrientation host)
+        /// <summary>Host shape now (asked every frame by the overlay: auto-rotating games and foldables change it mid-ad).</summary>
+        static PromoOrientation LiveHost()
+        {
+            try { if (_config.HostOrientation != null) return _config.HostOrientation(); }
+            catch (Exception e) { Debug.LogException(e); }
+            return HostShape();
+        }
+
+        static PlaybackRequest BaseRequest(string promoId, Func<PromoOrientation> host)
         {
             var rules = Catalog != null ? Catalog.Rules : new CatalogRules();
             return new PlaybackRequest
@@ -235,13 +245,14 @@ namespace Relead.CrossPromo
                 RewardAfterSec = rules.RewardAfterSec,
                 RotateHintTimeoutSec = rules.RotateHintTimeoutSec,
                 Language = _config.Language,
-                HostOrientation = () => host,
+                HostOrientation = host,
+                Muted = _config.IsMuted,
                 DeviceOrientation = _config.DeviceOrientation ?? SafeDeviceOrientation,
                 ScreenOrientation = () => Screen.orientation,
             };
         }
 
-        static void Play(IPromoPlayer player, PlaybackRequest req, string promoId, string targetGameId, bool fallback, Action<PromoResult> onResult)
+        static void Play(IPromoPlayer player, PlaybackRequest req, string promoId, string targetGameId, bool fallback, bool alreadyOpen, Action<PromoResult> onResult)
         {
             _showing = true;
             var baseProps = new Dictionary<string, object> { { "fallback", fallback } };
@@ -252,17 +263,19 @@ namespace Relead.CrossPromo
                 Track(name, promoId, tg, Merge(baseProps, props));
             };
             Track("promo_shown", promoId, targetGameId, baseProps);
-            _cap.RecordShown(DateTime.Now);
             if (!fallback)
             {
-                _history.RecordShown(promoId, DateTime.UtcNow);
-                _store.Set(LastShownKey, promoId);
+                Safe(() => _history.RecordShown(promoId, DateTime.UtcNow));
+                Safe(() => _store.Set(LastShownKey, promoId));
             }
-            RaiseOpened();
-            player.Play(req, result =>
+            if (!alreadyOpen) RaiseOpened();
+
+            // Exactly once, whatever throws: bookkeeping is guarded step by step and the result always reaches the host.
+            var finish = Once<PromoResult>(result =>
             {
                 _showing = false;
                 if (result.TargetGameId == null) result.TargetGameId = targetGameId;
+                Safe(() => _cap.RecordResult(result.Outcome, DateTime.Now));
                 var props = Merge(baseProps, new Dictionary<string, object> { { "watchSec", Math.Round(result.WatchedSec, 1) }, { "storeClicked", result.StoreClicked } });
                 switch (result.Outcome)
                 {
@@ -270,12 +283,51 @@ namespace Relead.CrossPromo
                     case PromoOutcome.Skipped: Track("promo_skipped", promoId, result.TargetGameId, props); break;
                     default: props["reason"] = result.FailReason; Track("promo_failed", promoId, result.TargetGameId, props); break;
                 }
-                _tracker.Flush();
-                Prefetch();
+                if (FallBackAfter(result, fallback))
+                {
+                    // Broken or unplayable file: drop it (downloaded again on wifi) and show the offline slideshow instead.
+                    if (req.Media != null) Safe(() => _cache.Delete(req.Media.Url));
+                    List<FallbackGame> games = null;
+                    Safe(() => games = SelectFallback());
+                    if (games != null && games.Count > 0)
+                    {
+                        ShowFallback(games, onResult, true);
+                        return;
+                    }
+                }
+                Safe(() => _tracker.Flush());
+                Safe(Prefetch);
                 var closed = Closed;
                 if (closed != null) { try { closed(result); } catch (Exception e) { Debug.LogException(e); } }
                 Done(onResult, result);
             });
+            try { player.Play(req, finish); }
+            catch (Exception e)
+            {
+                Debug.LogException(e);
+                finish(Failed("player: " + e.Message));
+            }
+        }
+
+        /// <summary>A video that could not play (not a scene change, not the slideshow itself) is replaced by the slideshow.</summary>
+        internal static bool FallBackAfter(PromoResult r, bool wasFallback)
+            => !wasFallback && r != null && r.Outcome == PromoOutcome.Failed && r.FailReason != "destroyed";
+
+        /// <summary>Wraps a callback so later calls are ignored; exceptions from it are logged, never thrown.</summary>
+        internal static Action<T> Once<T>(Action<T> action)
+        {
+            bool called = false;
+            return x =>
+            {
+                if (called) return;
+                called = true;
+                try { action(x); } catch (Exception e) { Debug.LogException(e); }
+            };
+        }
+
+        static void Safe(Action a)
+        {
+            try { a(); } catch (Exception e) { Debug.LogException(e); }
         }
 
         static PromoChoice SelectVideo()
@@ -355,7 +407,6 @@ namespace Relead.CrossPromo
                 AppVersion = Application.version,
                 Platform = _platform == PromoPlatform.IOS ? "iOS" : _platform.ToString(),
                 OsVersion = SystemInfo.operatingSystem,
-                DeviceModel = SystemInfo.deviceModel,
                 Locale = _config.Language,
             };
             return new ReleadTracker(_http, _config.TrackingEndpoint, _config.IngestKey, env, Path.Combine(root, "events.jsonl"), () => DateTime.UtcNow, common);
@@ -405,8 +456,12 @@ namespace Relead.CrossPromo
             if (string.IsNullOrEmpty(relativeUrl) || !_cache.IsCached(relativeUrl)) return null;
             try
             {
+                var path = _cache.PathFor(relativeUrl);
+                if (new FileInfo(path).Length > Prefetcher.MaxIconBytes) { _cache.Delete(relativeUrl); return null; }
+                var bytes = File.ReadAllBytes(path);
+                if (!ImageGuard.IsAcceptableIcon(bytes)) { Log("icon rejected: " + relativeUrl); _cache.Delete(relativeUrl); return null; }
                 var tex = new Texture2D(2, 2, TextureFormat.RGBA32, false);
-                if (tex.LoadImage(File.ReadAllBytes(_cache.PathFor(relativeUrl)))) return tex;
+                if (tex.LoadImage(bytes)) return tex;
                 UnityEngine.Object.Destroy(tex);
             }
             catch (Exception e) { Log("icon: " + e.Message); }

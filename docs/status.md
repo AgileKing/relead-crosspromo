@@ -1,5 +1,9 @@
 # Status / handoff
 
+## 0.1.4 (2026-11-27)
+
+Codex review (`docs/reviews/2026-11-27-codex-review.md`) fixed: daily cap counts completed promos only (0011); download trust and size caps (0012); broken/stalled video → deleted + slideshow, result exactly once (0013); ad pauses on focus loss / background (0014); safe area and host shape changes mid-ad (0015); no `device_model` (0016); clock-back cap, promo audio via AudioSource + `CrossPromoConfig.IsMuted`, atomic file writes (0017). 164 EditMode tests pass. **Device test needed**: pause/focus and returning from the store, AudioSource sound on Android/iOS, notch phones in landscape (safe area, rotated stage). Tell crosspromo-content: `bytes` + `sha256` and plain relative paths are now required (live catalog already complies).
+
 ## 0.1.3 (2026-11-27)
 
 Mismatched-orientation video plays at once (letterboxed, small rotate icon in the bar) and goes full screen whenever the phone is turned and held 0.5 s (decision 0009). Daily cap notice + `PromoOutcome.Capped`, `IsCappedToday`, `RemainingToday` (decision 0010, for GP King). Glow behind Skip/countdown, smaller Skip. 142 EditMode tests pass. **Not checked visually yet**: hint position in the letterbox bar (portrait and landscape host, iPad), glow on white video, capped notice, rotate-after-panel rebuild. Device test still open (item 2 below).

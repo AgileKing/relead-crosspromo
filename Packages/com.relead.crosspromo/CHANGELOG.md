@@ -1,5 +1,15 @@
 # Changelog
 
+## [0.1.4] - 2026-11-27
+
+- **Daily cap counts completed promos only**: skipping, a playback failure or a scene change no longer uses up one of today's `maxPerDay` (decision 0011). `RemainingToday` drops only after a rewarded promo.
+- **Broken video → slideshow**: a video that fails (decode error, timeout, stall, bad size) is deleted from the cache and the offline slideshow plays in the same `Show`. New stall watchdog (5 s without a new frame). The result always reaches the host exactly once, even when a tracker or callback throws (decision 0013).
+- **Pause on focus loss**: notification shade, calls, app switch or opening the store pause the video and the reward timer (decision 0014).
+- **Safe area**: Skip, countdown, ×, "Earned! Close", download panel and slideshow bar stay inside `Screen.safeArea`, also on a rotated stage. Host shape changes mid-ad (auto-rotate, foldables) re-layout the stage (decision 0015).
+- **Download hardening**: catalog paths must be plain relative paths (no other hosts, no `..`); https base URLs only; media needs `bytes` + `sha256` and ≤ 50 MB; downloads abort above their cap (catalog 1 MB, icon 1 MB); icons ≤ 1024 px checked before decoding; video ≤ 4096 px (decision 0012).
+- **Tracking**: `device_model` is no longer sent (decision 0016).
+- Daily cap can't be refilled by setting the date back; promo audio follows `AudioListener.volume`, new `CrossPromoConfig.IsMuted`; catalog, state, media and the event queue are replaced atomically (decision 0017).
+
 ## [0.1.3] - 2026-11-27
 
 - **Video starts at once** when its orientation differs from the game: it plays letterboxed with a small, non-blocking rotate-phone icon in the bar above (or beside) it. No more dark full-screen hint.

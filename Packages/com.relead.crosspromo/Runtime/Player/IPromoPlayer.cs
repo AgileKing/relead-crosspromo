@@ -57,6 +57,8 @@ namespace Relead.CrossPromo
         public Func<PromoOrientation> HostOrientation;
         public Func<DeviceOrientation> DeviceOrientation;
         public Func<ScreenOrientation> ScreenOrientation;
+        /// <summary>True = promo audio muted (the game's sound setting). Null = not muted.</summary>
+        public Func<bool> Muted;
         /// <summary>Event name + props, forwarded to the tracker.</summary>
         public Action<string, Dictionary<string, object>> Track;
         /// <summary>Opens the store link (Application.OpenURL by default).</summary>

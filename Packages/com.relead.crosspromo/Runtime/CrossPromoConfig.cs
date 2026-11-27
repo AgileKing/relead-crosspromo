@@ -37,5 +37,8 @@ namespace Relead.CrossPromo
         /// <summary>Editor/testing: also show promos whose game has no store id yet ("TODO").</summary>
         public bool RequireStoreLink = true;
         public bool VerboseLogging;
+        /// <summary>Optional: return true while the player has the game's sound off; the promo video is then muted too.
+        /// AudioListener.volume applies anyway.</summary>
+        public Func<bool> IsMuted;
     }
 }

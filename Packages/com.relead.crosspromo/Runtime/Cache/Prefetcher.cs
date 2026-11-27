@@ -71,7 +71,9 @@ namespace Relead.CrossPromo
             foreach (var p in eligible)
             {
                 if (plan.Count >= slots) break;
-                plan.Add(new PrefetchItem { Promo = p, Media = PromoSelector.ChooseMedia(p, noCache, false), Game = catalog.FindGame(p.GameId) });
+                var media = PromoSelector.ChooseMedia(p, noCache, false);
+                if (!Prefetcher.CanDownload(media)) continue; // no size/hash or too big: give the slot to the next promo
+                plan.Add(new PrefetchItem { Promo = p, Media = media, Game = catalog.FindGame(p.GameId) });
             }
             return plan;
         }
@@ -86,6 +88,16 @@ namespace Relead.CrossPromo
     /// </summary>
     public sealed class Prefetcher
     {
+        /// <summary>Largest media file the package downloads (current promo videos are ~5 MB).</summary>
+        public const long MaxMediaBytes = 50L * 1024 * 1024;
+        /// <summary>Largest icon file.</summary>
+        public const int MaxIconBytes = 1024 * 1024;
+
+        /// <summary>Media is only downloaded with a size and sha256 from the catalog, and within MaxMediaBytes.</summary>
+        public static bool CanDownload(PromoMedia m)
+            => m != null && m.Bytes.HasValue && m.Bytes.Value > 0 && m.Bytes.Value <= MaxMediaBytes
+               && !string.IsNullOrEmpty(m.Sha256) && UrlUtil.IsSafeRelative(m.Url);
+
         readonly MediaCache _cache;
         readonly IHttp _http;
         readonly Func<bool> _isOnWifi;
@@ -120,10 +132,13 @@ namespace Relead.CrossPromo
             var jobs = new List<Job>();
             foreach (var it in plan)
             {
-                if (it.Media != null && !_cache.IsCached(it.Media.Url))
-                    jobs.Add(new Job { Url = it.Media.Url, Bytes = it.Media.Bytes, Sha256 = it.Media.Sha256 });
+                if (it.Media != null && !_cache.IsCached(it.Media))
+                {
+                    if (CanDownload(it.Media)) jobs.Add(new Job { Url = it.Media.Url, Bytes = it.Media.Bytes, Sha256 = it.Media.Sha256, MaxBytes = it.Media.Bytes.Value });
+                    else LastError = it.Media.Url + ": no size/sha256 or too big";
+                }
                 if (it.Game != null && !string.IsNullOrEmpty(it.Game.Icon) && !_cache.IsCached(it.Game.Icon) && !jobs.Exists(j => j.Url == it.Game.Icon))
-                    jobs.Add(new Job { Url = it.Game.Icon, Optional = true });
+                    jobs.Add(new Job { Url = it.Game.Icon, Optional = true, MaxBytes = MaxIconBytes });
             }
             var keep = KeepSet(plan);
             if (jobs.Count == 0)
@@ -137,7 +152,7 @@ namespace Relead.CrossPromo
             {
                 _busy = false;
                 bool allRequiredCached = true;
-                foreach (var it in plan) if (it.Media != null && !_cache.IsCached(it.Media.Url)) allRequiredCached = false;
+                foreach (var it in plan) if (it.Media != null && !_cache.IsCached(it.Media)) allRequiredCached = false;
                 if (allRequiredCached) _cache.EvictExcept(keep);
                 if (done != null) done(failed ? PrefetchOutcome.PartlyFailed : PrefetchOutcome.Done);
             });
@@ -149,6 +164,7 @@ namespace Relead.CrossPromo
             public long? Bytes;
             public string Sha256;
             public bool Optional;
+            public long MaxBytes;
         }
 
         void Next(List<Job> jobs, int i, string baseUrl, bool failed, Action<bool> done)
@@ -157,7 +173,14 @@ namespace Relead.CrossPromo
             if (!_isOnWifi()) { LastError = "left wifi"; done(true); return; }
             var job = jobs[i];
             var tmp = _cache.TempPathFor(job.Url);
-            var req = new HttpRequest { Url = UrlUtil.Join(baseUrl, job.Url), DownloadToPath = tmp, TimeoutSec = 120 };
+            var url = UrlUtil.Join(baseUrl, job.Url);
+            if (url == null || !UrlUtil.IsHttps(url))
+            {
+                LastError = job.Url + ": unsafe url";
+                Next(jobs, i + 1, baseUrl, failed || !job.Optional, done);
+                return;
+            }
+            var req = new HttpRequest { Url = url, DownloadToPath = tmp, TimeoutSec = 120, MaxBytes = job.MaxBytes };
             _http.Send(req, resp =>
             {
                 bool ok = false;

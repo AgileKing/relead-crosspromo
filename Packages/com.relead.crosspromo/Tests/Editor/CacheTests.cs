@@ -154,7 +154,7 @@ namespace Relead.CrossPromo.Tests
         [SetUp] public void SetUp() { _dir = TestUtil.NewTempDir(); }
         [TearDown] public void TearDown() { try { Directory.Delete(_dir, true); } catch (Exception) { } }
 
-        static string Sha(byte[] b) { var h = SHA256.Create().ComputeHash(b); var sb = new StringBuilder(); foreach (var x in h) sb.Append(x.ToString("x2")); return sb.ToString(); }
+        internal static string Sha(byte[] b) { var h = SHA256.Create().ComputeHash(b); var sb = new StringBuilder(); foreach (var x in h) sb.Append(x.ToString("x2")); return sb.ToString(); }
 
         [Test]
         public void CommitVerifiesSizeAndSha()
@@ -214,7 +214,8 @@ namespace Relead.CrossPromo.Tests
         {
             Assert.AreEqual("https://x/a/b.mp4", UrlUtil.Join("https://x/", "/a/b.mp4"));
             Assert.AreEqual("https://x/a", UrlUtil.Join("https://x", "a"));
-            Assert.AreEqual("https://cdn/z", UrlUtil.Join("https://x", "https://cdn/z"));
+            Assert.IsNull(UrlUtil.Join("https://x", "https://cdn/z"), "absolute URLs never leave the base host");
+            Assert.IsNull(UrlUtil.Join("https://x", "../secret"));
         }
     }
 
@@ -241,12 +242,14 @@ namespace Relead.CrossPromo.Tests
 
         [TearDown] public void TearDown() { try { Directory.Delete(_dir, true); } catch (Exception) { } }
 
+        internal static byte[] Video(int i) => new byte[] { 1, 2, (byte)i };
+
         static Catalog Cat()
         {
             var sb = new StringBuilder(@"{""schemaVersion"":1,""games"":[");
             for (int i = 1; i <= 4; i++) sb.Append(i > 1 ? "," : "").Append(@"{""id"":""g" + i + @""",""urlScheme"":""relead-g0" + i + @""",""icon"":""g" + i + @"/icon.png"",""store"":{""android"":""com.r.g" + i + @"""}}");
             sb.Append(@"],""promos"":[");
-            for (int i = 1; i <= 4; i++) sb.Append(i > 1 ? "," : "").Append(@"{""id"":""p" + i + @""",""gameId"":""g" + i + @""",""weight"":" + (10 - i) + @",""media"":[{""type"":""video"",""orientation"":""portrait"",""url"":""p" + i + @".mp4""}]}");
+            for (int i = 1; i <= 4; i++) sb.Append(i > 1 ? "," : "").Append(@"{""id"":""p" + i + @""",""gameId"":""g" + i + @""",""weight"":" + (10 - i) + @",""media"":[{""type"":""video"",""orientation"":""portrait"",""url"":""p" + i + @".mp4"",""bytes"":3,""sha256"":""" + MediaCacheTests.Sha(Video(i)) + @"""}]}");
             sb.Append("]}");
             var r = CatalogParser.Parse(sb.ToString());
             Assert.IsTrue(r.Ok, r.Error);
@@ -259,7 +262,7 @@ namespace Relead.CrossPromo.Tests
         {
             for (int i = 1; i <= 4; i++)
             {
-                _http.Bytes(Base + "/p" + i + ".mp4", new byte[] { 1, 2, (byte)i });
+                _http.Bytes(Base + "/p" + i + ".mp4", Video(i));
                 _http.Bytes(Base + "/g" + i + "/icon.png", new byte[] { 9 });
             }
         }

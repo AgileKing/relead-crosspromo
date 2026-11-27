@@ -274,6 +274,29 @@ namespace Relead.CrossPromo.Tests
         }
 
         [Test]
+        public void OnlyCompletedCounts()
+        {
+            var cap = new DailyCap(new MemStore());
+            var now = new DateTime(2026, 12, 1, 12, 0, 0, DateTimeKind.Local);
+            Assert.IsFalse(cap.RecordResult(PromoOutcome.Skipped, now), "skipped");
+            Assert.IsFalse(cap.RecordResult(PromoOutcome.Failed, now), "failed / aborted");
+            Assert.IsFalse(cap.RecordResult(PromoOutcome.Capped, now), "capped notice");
+            Assert.AreEqual(0, cap.ShownToday(now));
+            Assert.IsTrue(cap.RecordResult(PromoOutcome.Completed, now));
+            Assert.AreEqual(1, cap.ShownToday(now));
+        }
+
+        [Test]
+        public void SkippingNeverReachesTheCap()
+        {
+            var cap = new DailyCap(new MemStore());
+            var now = new DateTime(2026, 12, 1, 12, 0, 0, DateTimeKind.Local);
+            for (int i = 0; i < 20; i++) cap.RecordResult(PromoOutcome.Skipped, now);
+            Assert.IsTrue(cap.CanShow(now, 1));
+            Assert.AreEqual(1, cap.Remaining(now, 1));
+        }
+
+        [Test]
         public void ZeroMeansOff()
         {
             Assert.IsFalse(new DailyCap(new MemStore()).CanShow(DateTime.Now, 0));

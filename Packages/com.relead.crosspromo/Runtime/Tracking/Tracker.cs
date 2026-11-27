@@ -30,7 +30,6 @@ namespace Relead.CrossPromo
         public long? Build;
         public string Platform;
         public string OsVersion;
-        public string DeviceModel;
         public string Locale;
     }
 
@@ -123,7 +122,7 @@ namespace Relead.CrossPromo
                 var sb = new StringBuilder();
                 if (PendingBatchId != null) sb.Append("#batch ").Append(PendingBatchId).Append(' ').Append(PendingCount.ToString(CultureInfo.InvariantCulture)).Append('\n');
                 foreach (var l in _lines) sb.Append(l).Append('\n');
-                File.WriteAllText(_file, sb.ToString());
+                AtomicFile.WriteAllText(_file, sb.ToString());
             }
             catch (Exception) { }
         }
@@ -235,7 +234,6 @@ namespace Relead.CrossPromo
                 { "app_version", _env.AppVersion },
                 { "platform", _env.Platform },
                 { "os_version", _env.OsVersion },
-                { "device_model", _env.DeviceModel },
                 { "locale", _env.Locale },
                 { "queued_at", _utcNow().ToString("yyyy-MM-ddTHH:mm:ssZ", CultureInfo.InvariantCulture) },
             };

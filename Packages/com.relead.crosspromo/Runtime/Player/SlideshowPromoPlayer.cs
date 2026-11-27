@@ -96,7 +96,7 @@ namespace Relead.CrossPromo
             _fitter = holder.gameObject.AddComponent<AspectRatioFitter>();
             _fitter.aspectMode = AspectRatioFitter.AspectMode.FitInParent;
 
-            var bar = PromoUI.Panel("Bar", area, new Color(0, 0, 0, 0.6f));
+            var bar = PromoUI.Panel("Bar", Safe, new Color(0, 0, 0, 0.6f)); // inside the safe area: store button stays tappable
             bar.rectTransform.anchorMin = new Vector2(0, 0);
             bar.rectTransform.anchorMax = new Vector2(1, 0);
             bar.rectTransform.pivot = new Vector2(0.5f, 0);

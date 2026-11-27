@@ -89,6 +89,30 @@ namespace Relead.CrossPromo
                 : Mathf.Max(0, (width - Mathf.Min(width, height * 9f / 16f)) / 2f);
         }
 
+        /// <summary>
+        /// Safe-area insets (x left, y right, z top, w bottom) seen from a stage rotated by <paramref name="stageZ"/>
+        /// degrees (counter-clockwise, any multiple of 90). Screen insets come from Screen.safeArea in canvas units.
+        /// </summary>
+        public static Vector4 SafeInsets(Vector4 screen, float stageZ)
+        {
+            int q = ((Mathf.RoundToInt(stageZ / 90f) % 4) + 4) % 4;
+            switch (q)
+            {
+                case 1: return new Vector4(screen.w, screen.z, screen.x, screen.y); // top→screen left, left→screen bottom
+                case 2: return new Vector4(screen.y, screen.x, screen.w, screen.z);
+                case 3: return new Vector4(screen.z, screen.w, screen.y, screen.x); // top→screen right, left→screen top
+                default: return screen;
+            }
+        }
+
+        /// <summary>
+        /// Stage mode right after the host screen changed shape mid-ad (auto-rotating game, foldable opened):
+        /// matching media goes upright, otherwise letterbox without a second hint; Next takes over from there.
+        /// The media variant stays the same until the next promo.
+        /// </summary>
+        public static StageMode AfterHostChange(PromoOrientation host, PromoOrientation media)
+            => host == media ? StageMode.Upright : StageMode.Letterbox;
+
         /// <summary>How long the device must match the media before a playing video switches to the rotated stage.</summary>
         public const float MatchStableSec = 0.5f;
 

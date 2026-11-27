@@ -23,6 +23,10 @@ namespace Relead.CrossPromo
         protected RectTransform Root;
         protected RectTransform Stage;
         protected RectTransform ContentArea;
+        /// <summary>Stage area inside Screen.safeArea (notch, rounded corners, home bar): every control lives here.</summary>
+        protected RectTransform Safe;
+        /// <summary>False while the app has no focus or is paused: content pauses, the clock stops.</summary>
+        protected bool AppActive => _gate.Active;
         protected WatchClock Clock;
         protected StageMode Mode = StageMode.RotateHint;
 
@@ -48,6 +52,7 @@ namespace Relead.CrossPromo
         bool _finished;
         bool _hintTracked;
         PromoOrientation _host;
+        readonly PlaybackGate _gate = new PlaybackGate();
 
         /// <summary>Orientation the content wants; host orientation = no rotation logic.</summary>
         protected abstract PromoOrientation ContentOrientation { get; }
@@ -60,7 +65,10 @@ namespace Relead.CrossPromo
         protected virtual bool IsFallback => false;
         /// <summary>False when the content already has its own store button (slideshow).</summary>
         protected virtual bool ShowsDownloadPanel => true;
+        /// <summary>Called with active time only (not while paused / unfocused).</summary>
         protected virtual void TickContent(float dt) { }
+        protected virtual void PauseContent() { }
+        protected virtual void ResumeContent() { }
 
         public void Begin(PlaybackRequest request, Action<PromoResult> done)
         {
@@ -72,7 +80,7 @@ namespace Relead.CrossPromo
             {
                 BuildFrame();
                 BuildContent(ContentArea);
-                if (!_finished) UpdateMode(0f);
+                if (!_finished) { UpdateMode(0f); LayoutSafeArea(); }
             }
             catch (Exception e)
             {
@@ -91,8 +99,9 @@ namespace Relead.CrossPromo
 
             Stage = PromoUI.Stretch(PromoUI.Rect("Stage", Root));
             ContentArea = PromoUI.Stretch(PromoUI.Rect("Content", Stage));
+            Safe = PromoUI.Stretch(PromoUI.Rect("Safe", Stage));
 
-            var barBg = PromoUI.Panel("ProgressBg", Stage, new Color(1, 1, 1, 0.15f));
+            var barBg = PromoUI.Panel("ProgressBg", Safe, new Color(1, 1, 1, 0.15f));
             PromoUI.Place(barBg.rectTransform, new Vector2(0.5f, 0), new Vector2(0.5f, 0), Vector2.zero, new Vector2(0, 8));
             barBg.rectTransform.anchorMin = new Vector2(0, 0);
             barBg.rectTransform.anchorMax = new Vector2(1, 0);
@@ -103,28 +112,28 @@ namespace Relead.CrossPromo
             prt.offsetMin = prt.offsetMax = Vector2.zero;
 
             // Soft black glow behind Skip and the countdown, so they stay readable on white video.
-            _countdownGlow = PromoUI.Glow("CountdownGlow", Stage, Vector2.one, new Vector2(-32, -32), new Vector2(96, 96));
-            _countdown = PromoUI.Label("Countdown", Stage, "", 40, Color.white, TextAnchor.MiddleCenter, FontStyle.Bold);
+            _countdownGlow = PromoUI.Glow("CountdownGlow", Safe, Vector2.one, new Vector2(-32, -32), new Vector2(96, 96));
+            _countdown = PromoUI.Label("Countdown", Safe, "", 40, Color.white, TextAnchor.MiddleCenter, FontStyle.Bold);
             PromoUI.Place(_countdown.rectTransform, Vector2.one, Vector2.one, new Vector2(-32, -32), new Vector2(96, 96));
-            var cdBg = PromoUI.Panel("CountdownBg", Stage, new Color(0, 0, 0, 0.55f), true);
+            var cdBg = PromoUI.Panel("CountdownBg", Safe, new Color(0, 0, 0, 0.55f), true);
             PromoUI.Place(cdBg.rectTransform, Vector2.one, Vector2.one, new Vector2(-32, -32), new Vector2(96, 96));
             cdBg.transform.SetSiblingIndex(_countdown.transform.GetSiblingIndex());
             cdBg.raycastTarget = false;
             _countdown.transform.SetParent(cdBg.transform, false);
             PromoUI.Stretch(_countdown.rectTransform);
 
-            _close = PromoUI.CloseButton(Stage, OnCloseClicked);
+            _close = PromoUI.CloseButton(Safe, OnCloseClicked);
             PromoUI.Place((RectTransform)_close.transform, Vector2.one, Vector2.one, new Vector2(-32, -32), new Vector2(96, 96));
             _close.gameObject.SetActive(false);
 
-            _earned = PromoUI.Button("Earned", Stage, PromoUI.T(Request.Language, "Earned! Close", "Verdiend! Sluiten"),
+            _earned = PromoUI.Button("Earned", Safe, PromoUI.T(Request.Language, "Earned! Close", "Verdiend! Sluiten"),
                 new Color(0.15f, 0.75f, 0.3f, 1f), Color.white, 30, OnEarnedClicked);
             // Portrait phone ≈ 730 canvas units wide (1080 reference, match 0.5): 32+160 left, 32+96+16+320 right still fit.
             PromoUI.Place((RectTransform)_earned.transform, Vector2.one, Vector2.one, new Vector2(-32 - 96 - 16, -32), new Vector2(320, 96));
             _earned.gameObject.SetActive(false);
 
-            _skipGlow = PromoUI.Glow("SkipGlow", Stage, new Vector2(0, 1), new Vector2(32, -32), new Vector2(140, 60));
-            _skip = PromoUI.Button("Skip", Stage, PromoUI.T(Request.Language, "Skip", "Overslaan"),
+            _skipGlow = PromoUI.Glow("SkipGlow", Safe, new Vector2(0, 1), new Vector2(32, -32), new Vector2(140, 60));
+            _skip = PromoUI.Button("Skip", Safe, PromoUI.T(Request.Language, "Skip", "Overslaan"),
                 new Color(0, 0, 0, 0.45f), new Color(1, 1, 1, 0.85f), 24, OnSkipClicked);
             PromoUI.Place((RectTransform)_skip.transform, new Vector2(0, 1), new Vector2(0, 1), new Vector2(32, -32), new Vector2(140, 60));
             _skip.gameObject.SetActive(false);
@@ -148,16 +157,19 @@ namespace Relead.CrossPromo
         {
             if (_finished) return;
             float dt = Mathf.Min(Time.unscaledDeltaTime, MaxDelta);
+            float activeDt = AppActive ? dt : 0f;
             try
             {
-                if (Mode == StageMode.RotateHint || Mode == StageMode.Letterbox) UpdateMode(dt);
+                CheckHostChange();
+                if (Mode == StageMode.RotateHint || Mode == StageMode.Letterbox) UpdateMode(activeDt);
                 else if (Mode == StageMode.Rotated) LayoutStage();
+                LayoutSafeArea();
 
                 if (_contentStarted)
                 {
-                    TickContent(dt);
+                    if (AppActive) TickContent(dt);
                     if (_finished) return;
-                    if (ContentRunning) Clock.Tick(dt);
+                    if (AppActive && ContentRunning) Clock.Tick(dt);
                     _skip.gameObject.SetActive(Clock.CanSkip);
                     _skipGlow.SetActive(Clock.CanSkip);
                     bool earned = Clock.Earned;
@@ -194,6 +206,51 @@ namespace Relead.CrossPromo
             {
                 Fail("update: " + e.Message);
             }
+        }
+
+        void OnApplicationFocus(bool focus) => ApplyGate(_gate.SetFocus(focus));
+        void OnApplicationPause(bool paused) => ApplyGate(_gate.SetPaused(paused));
+
+        void ApplyGate(PlaybackGate.Change change)
+        {
+            if (change == PlaybackGate.Change.None || _finished || !_contentStarted) return;
+            try
+            {
+                if (change == PlaybackGate.Change.Paused) PauseContent();
+                else ResumeContent();
+            }
+            catch (Exception e) { Fail("lifecycle: " + e.Message); }
+        }
+
+        /// <summary>Auto-rotating game or foldable changed the screen shape mid-ad: re-evaluate the stage (same media).</summary>
+        void CheckHostChange()
+        {
+            var host = Request.HostOrientation != null ? Request.HostOrientation() : OrientationLogic.FromSize(Screen.width, Screen.height);
+            if (host == _host) return;
+            _host = host;
+            _matchHeld = 0f;
+            _hintElapsed = Mathf.Max(_hintElapsed, Request.RotateHintTimeoutSec);
+            Mode = OrientationLogic.AfterHostChange(_host, ContentOrientation);
+            if (Mode != StageMode.Upright) UpdateMode(0f);
+            else { _hint.gameObject.SetActive(false); LayoutStage(); }
+        }
+
+        /// <summary>Keeps the controls inside Screen.safeArea, also when the stage is drawn rotated.</summary>
+        void LayoutSafeArea()
+        {
+            float sw = Screen.width, sh = Screen.height;
+            var size = Root.rect.size;
+            if (sw <= 0 || sh <= 0 || size.x <= 0 || size.y <= 0) return;
+            var sa = Screen.safeArea;
+            float kx = size.x / sw, ky = size.y / sh;
+            var screen = new Vector4(
+                Mathf.Max(0, sa.xMin) * kx,
+                Mathf.Max(0, sw - sa.xMax) * kx,
+                Mathf.Max(0, sh - sa.yMax) * ky,
+                Mathf.Max(0, sa.yMin) * ky);
+            var local = OrientationLogic.SafeInsets(screen, Stage.localEulerAngles.z);
+            Safe.offsetMin = new Vector2(local.x, local.w);
+            Safe.offsetMax = new Vector2(-local.y, -local.z);
         }
 
         void UpdateMode(float dt)
@@ -328,7 +385,7 @@ namespace Relead.CrossPromo
             bool hasIcon = target != null && target.Icon != null;
             const float pad = 24, iconSize = 176, buttonH = 130;
 
-            var bg = PromoUI.Panel("EndCard", Stage, new Color(0.05f, 0.05f, 0.08f, 0.85f), true);
+            var bg = PromoUI.Panel("EndCard", Safe, new Color(0.05f, 0.05f, 0.08f, 0.85f), true);
             _endCard = bg.rectTransform;
             _endCard.anchorMin = new Vector2(0, 0);
             _endCard.anchorMax = new Vector2(1, 0);

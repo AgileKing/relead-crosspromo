@@ -27,7 +27,7 @@ namespace Relead.CrossPromo.Tests
 
         ReleadTracker New() => new ReleadTracker(_http, Endpoint, "ingest-key", new TrackerEnvelope
         {
-            GameId = "gpking", InstallId = "inst-1", AppVersion = "1.2", Platform = "Android", OsVersion = "14", DeviceModel = "Pixel", Locale = "nl-NL",
+            GameId = "gpking", InstallId = "inst-1", AppVersion = "1.2", Platform = "Android", OsVersion = "14", Locale = "nl-NL",
         }, Path.Combine(_dir, "events.jsonl"), () => _now, new Dictionary<string, object> { { "hostGameId", "gpking" }, { "packageVersion", "0.1.0" } });
 
         static Dictionary<string, object> Body(HttpRequest r)
@@ -57,6 +57,7 @@ namespace Relead.CrossPromo.Tests
             Assert.AreEqual("inst-1", env["install_id"]);
             Assert.AreEqual("2026-12-01T10:00:00Z", env["queued_at"]);
             Assert.IsFalse(env.ContainsKey("build"));
+            Assert.IsFalse(env.ContainsKey("device_model"), "no device model (decision 0016)");
             var ev = (Dictionary<string, object>)((List<object>)b["events"])[0];
             Assert.AreEqual("promo_shown", ev["name"]);
             Assert.AreEqual("2026-12-01T10:00:00.000Z", ev["ts"]);

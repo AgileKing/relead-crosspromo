@@ -27,7 +27,21 @@ namespace Relead.CrossPromo
         }
 
         public bool IsCached(string relativeUrl) => !string.IsNullOrEmpty(relativeUrl) && File.Exists(PathFor(relativeUrl));
-        public bool IsCached(PromoMedia m) => m != null && IsCached(m.Url);
+        /// <summary>Cached and, when the catalog gives a size, still that size (a truncated or replaced file is not cached).</summary>
+        public bool IsCached(PromoMedia m)
+        {
+            if (m == null || !IsCached(m.Url)) return false;
+            if (!m.Bytes.HasValue) return true;
+            try { return new FileInfo(PathFor(m.Url)).Length == m.Bytes.Value; }
+            catch (Exception) { return false; }
+        }
+
+        /// <summary>Removes a cached file (e.g. after it failed to play), so it is downloaded again.</summary>
+        public void Delete(string relativeUrl)
+        {
+            if (string.IsNullOrEmpty(relativeUrl)) return;
+            TryDelete(PathFor(relativeUrl));
+        }
 
         /// <summary>Size and sha256 check. Missing expectations pass; an empty file never does.</summary>
         public static bool Verify(string path, long? bytes, string sha256, out string error)
@@ -54,8 +68,7 @@ namespace Relead.CrossPromo
                 if (!Verify(tempPath, bytes, sha256, out error)) { TryDelete(tempPath); return false; }
                 System.IO.Directory.CreateDirectory(_dir);
                 var final = PathFor(relativeUrl);
-                if (File.Exists(final)) File.Delete(final);
-                File.Move(tempPath, final);
+                AtomicFile.Replace(tempPath, final);
                 return true;
             }
             catch (Exception e)

@@ -11,8 +11,9 @@ namespace Relead.CrossPromo
     }
 
     /// <summary>
-    /// maxPerDay cap, counted per local calendar day (the player's day, not UTC). Counts every shown promo,
-    /// video or fallback slideshow. maxPerDay 0 = nothing today (kill switch from the catalog).
+    /// maxPerDay cap, counted per local calendar day (the player's day, not UTC). Counts completed promos only
+    /// (watched to the reward, video or fallback slideshow); skipped, failed or aborted ones don't use up the day
+    /// (decision 0011). maxPerDay 0 = nothing today (kill switch from the catalog).
     /// </summary>
     public sealed class DailyCap
     {
@@ -21,15 +22,28 @@ namespace Relead.CrossPromo
 
         public DailyCap(IKeyValueStore store) { _store = store; }
 
+        /// <summary>
+        /// Count for today. A stored day later than today (device date set back, or a time-zone change west)
+        /// keeps counting that later day, so moving the clock back and forth never refills the cap.
+        /// </summary>
         public int ShownToday(DateTime nowLocal)
         {
+            string day;
+            int n = Read(out day);
+            return day != null && string.CompareOrdinal(DayKey(nowLocal), day) <= 0 ? n : 0;
+        }
+
+        int Read(out string day)
+        {
+            day = null;
             var raw = _store.Get(Key);
             if (string.IsNullOrEmpty(raw)) return 0;
             int bar = raw.IndexOf('|');
-            if (bar <= 0) return 0;
-            if (raw.Substring(0, bar) != DayKey(nowLocal)) return 0;
+            if (bar != 10) return 0; // yyyy-MM-dd
             int n;
-            return int.TryParse(raw.Substring(bar + 1), NumberStyles.None, CultureInfo.InvariantCulture, out n) ? n : 0;
+            if (!int.TryParse(raw.Substring(bar + 1), NumberStyles.None, CultureInfo.InvariantCulture, out n)) return 0;
+            day = raw.Substring(0, bar);
+            return n;
         }
 
         public bool CanShow(DateTime nowLocal, int maxPerDay) => ShownToday(nowLocal) < maxPerDay;
@@ -38,8 +52,20 @@ namespace Relead.CrossPromo
 
         public void RecordShown(DateTime nowLocal)
         {
+            string stored;
+            Read(out stored);
+            var today = DayKey(nowLocal);
+            var day = stored != null && string.CompareOrdinal(today, stored) < 0 ? stored : today;
             int n = ShownToday(nowLocal) + 1;
-            _store.Set(Key, DayKey(nowLocal) + "|" + n.ToString(CultureInfo.InvariantCulture));
+            _store.Set(Key, day + "|" + n.ToString(CultureInfo.InvariantCulture));
+        }
+
+        /// <summary>Counts the promo when its outcome is Completed. Returns true when it was counted.</summary>
+        public bool RecordResult(PromoOutcome outcome, DateTime nowLocal)
+        {
+            if (outcome != PromoOutcome.Completed) return false;
+            RecordShown(nowLocal);
+            return true;
         }
 
         static string DayKey(DateTime d) => d.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture);
