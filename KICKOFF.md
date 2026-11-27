@@ -4,7 +4,7 @@ Goal: build v0.1.0 of the package = option A (video cross-promo) with orientatio
 
 Steps:
 1. Create dev Unity project in repo root (6000.5.8f1, batch mode `-createProject` is fine) + `.gitignore` for Unity. Embedded package at `Packages/com.relead.crosspromo/` with the existing `package.json` moved there.
-2. Catalog model + parser for `C:\Repos\crosspromo-content\catalog\promos.schema.json` (schemaVersion 1). Copy `promos.json` sample there as test fixture. Unknown fields/types must be ignored, not crash.
+2. Catalog model + parser for `crosspromo-content/catalog/promos.schema.json` (schemaVersion 1). Copy `promos.json` sample there as test fixture. Unknown fields/types must be ignored, not crash.
 3. Selection: filter self / installed / dates / minPackageVersion / unplayable media types, weighted pick, maxPerDay cap. Pure C#, testable.
 4. Cache + prefetch (UnityWebRequest → persistentDataPath, size/sha256 check, last good catalog on disk). Base URL list with fallback.
 5. `IPromoPlayer` + `VideoPromoPlayer` (uGUI + VideoPlayer + RenderTexture), close button after skipAfterSec, end card with store button.
