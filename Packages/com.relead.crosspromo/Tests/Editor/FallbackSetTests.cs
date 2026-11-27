@@ -43,6 +43,29 @@ namespace Relead.CrossPromo.Tests
         }
 
         [Test]
+        public void LiveCatalogParsesAndOfflineSetMatchesIt()
+        {
+            var r = CatalogParser.Parse(TestUtil.Fixture("promos.live.json"));
+            Assert.IsTrue(r.Ok, r.Error);
+            CollectionAssert.IsEmpty(r.Warnings);
+            var c = r.Catalog;
+            Assert.AreEqual(6, c.Games.Count);
+            Assert.IsNull(c.FindGame("gpking").Store.Ios, "missing key = no store link");
+            Assert.NotNull(c.FindPromo("kingofgames-placeholder-01"));
+
+            foreach (var g in Bundled().games)
+            {
+                var cg = c.FindGame(g.id);
+                Assert.NotNull(cg, g.id + " not in catalog");
+                Assert.AreEqual(cg.UrlScheme, g.urlScheme, g.id);
+                Assert.AreEqual(cg.Name, g.name, g.id);
+                Assert.AreEqual(cg.Store.Android ?? "", g.androidPackage, g.id);
+                Assert.AreEqual(cg.Store.Ios ?? "", g.iosAppId, g.id);
+                Assert.AreEqual(cg.Store.Windows ?? "", g.windowsProductId, g.id);
+            }
+        }
+
+        [Test]
         public void EachKnownGameNeverSeesItself()
         {
             var games = new List<FallbackGame>(Bundled().games);

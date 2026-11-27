@@ -11,8 +11,8 @@
     },
     {
       "id": "puzzleking",
-      "name": "Puzzles",
-      "urlScheme": "",
+      "name": "PuzzleKing",
+      "urlScheme": "relead-g02",
       "android": "com.relead.puzzle",
       "ios": "6792832839",
       "windows": ""
@@ -20,7 +20,7 @@
     {
       "id": "gpking",
       "name": "GP King",
-      "urlScheme": "",
+      "urlScheme": "relead-g05",
       "android": "com.relead.gp",
       "ios": "",
       "windows": ""
