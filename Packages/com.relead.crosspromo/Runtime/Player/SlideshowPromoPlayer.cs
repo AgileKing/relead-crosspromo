@@ -8,7 +8,8 @@ namespace Relead.CrossPromo
     /// <summary>
     /// Offline fallback: slideshow of screenshots bundled in the package (FallbackGameSet), each slide with the
     /// game name and a store button. Drawn in the host orientation (screenshots letterboxed), no rotate hint.
-    /// Same rules as a video: close after skipAfterSec, completion = reward.
+    /// Same ad timeline as a video (Skip, reward after rewardAfterSec); slides loop until closed. The slide bar has
+    /// its own store button, so no extra download panel.
     /// </summary>
     public sealed class SlideshowPromoPlayer : IPromoPlayer
     {
@@ -43,6 +44,13 @@ namespace Relead.CrossPromo
             return slides;
         }
 
+        /// <summary>Slide shown after <paramref name="elapsedSec"/>: wraps around, so the slideshow loops.</summary>
+        public static int SlideIndex(float elapsedSec, float slideSec, int slideCount)
+        {
+            if (slideCount <= 0 || slideSec <= 0) return 0;
+            return Mathf.FloorToInt(Mathf.Max(0, elapsedSec) / slideSec) % slideCount;
+        }
+
         /// <summary>Seconds per slide: total spread over the slides, clamped to 3–6 s.</summary>
         public static float SlideSeconds(int slideCount) => slideCount <= 0 ? TotalDurationSec : Mathf.Clamp(TotalDurationSec / slideCount, 3f, 6f);
     }
@@ -64,8 +72,8 @@ namespace Relead.CrossPromo
             ? Request.HostOrientation()
             : OrientationLogic.FromSize(Screen.width, Screen.height);
         protected override bool ContentRunning => _running;
-        protected override float? ContentDuration => _slides == null ? (float?)null : _slides.Count * _slideSec;
         protected override bool IsFallback => true;
+        protected override bool ShowsDownloadPanel => false;
         protected override PromoTarget CurrentTarget
         {
             get
@@ -123,13 +131,7 @@ namespace Relead.CrossPromo
         {
             if (!_running) return;
             _elapsed += dt;
-            int i = Mathf.Min(_slides.Count - 1, Mathf.FloorToInt(_elapsed / _slideSec));
-            ShowSlide(i);
-            if (_elapsed >= _slides.Count * _slideSec)
-            {
-                _running = false;
-                ContentFinished();
-            }
+            ShowSlide(SlideshowPromoPlayer.SlideIndex(_elapsed, _slideSec, _slides.Count));
         }
 
         protected override void StopContent() { _running = false; }

@@ -11,7 +11,7 @@ This repo is public: no secrets, no secret names, no local paths in committed fi
 - Namespace `Relead.CrossPromo`. Asmdefs: `Relead.CrossPromo`, `Relead.CrossPromo.Editor`, `Relead.CrossPromo.Tests`.
 - Tests first, strict. EditMode tests for catalog parse, selection/filters, caps, orientation choice, store-link building. No test = not done. 0 tests reported = failed run.
 - Run tests (Editor closed): `& "C:\Program Files\Unity\Hub\Editor\6000.5.8f1\Editor\Unity.exe" -batchmode -projectPath . -runTests -testPlatform EditMode -testResults TestResults.xml -logFile Logs/test-run.log` → read only `<test-run ` line + failed cases; log: `Select-String 'error CS|Exception'`. Never `-logFile -`.
-- Store rules: reward for watching only, never for install. Skip after 5 s. No IDFA/GAID.
+- Store rules: reward for watching only, never for install. Ad timeline from catalog rules (Skip from 0 s, download panel 25 s, reward 30 s; decision 0008). No IDFA/GAID.
 - Secrets: PowerShell SecretManagement vault, never in repo (see global CLAUDE.md).
 - App Store Connect and Play Developer API keys exist in the vault (shared by all Relead games). Use them read-only here (app ids, store screenshots for `Runtime/FallbackScreenshots`).
 - Decisions: `docs/decisions/NNNN-title.md`, one per choice, same commit as the work.

@@ -89,17 +89,34 @@ namespace Relead.CrossPromo
         }
     }
 
-    /// <summary>Skip/complete timing shared by every player. Pure, driven by unscaled delta time.</summary>
+    /// <summary>
+    /// Ad timeline shared by every player (catalog rules): Skip from skipAfterSec, download panel from
+    /// endCardAtSec, reward ("Earned! Close") from rewardAfterSec. Pure, driven by unscaled delta time.
+    /// </summary>
     public sealed class WatchClock
     {
         readonly float _skipAfterSec;
+        readonly float _endCardAtSec;
+        readonly float _rewardAfterSec;
         public float WatchedSec { get; private set; }
 
-        public WatchClock(float skipAfterSec) { _skipAfterSec = Mathf.Max(0, skipAfterSec); }
+        public WatchClock(float skipAfterSec, float endCardAtSec, float rewardAfterSec)
+        {
+            _skipAfterSec = Mathf.Max(0, skipAfterSec);
+            _endCardAtSec = Mathf.Max(0, endCardAtSec);
+            _rewardAfterSec = Mathf.Max(_endCardAtSec, rewardAfterSec);
+        }
 
         public void Tick(float dt) { if (dt > 0) WatchedSec += dt; }
+        /// <summary>Top-left Skip button visible.</summary>
         public bool CanSkip => WatchedSec >= _skipAfterSec;
-        /// <summary>Whole seconds left until the close button appears (for the countdown label).</summary>
-        public int SecondsUntilSkip => CanSkip ? 0 : Mathf.CeilToInt(_skipAfterSec - WatchedSec);
+        /// <summary>Download panel over the playing video.</summary>
+        public bool ShowEndCard => WatchedSec >= _endCardAtSec;
+        /// <summary>Watched long enough: any close now = Completed.</summary>
+        public bool Earned => WatchedSec >= _rewardAfterSec;
+        /// <summary>Whole seconds left until the reward (top-right countdown).</summary>
+        public int SecondsUntilReward => Earned ? 0 : Mathf.CeilToInt(_rewardAfterSec - WatchedSec);
+        /// <summary>0..1 towards the reward, for the progress bar.</summary>
+        public float RewardProgress => _rewardAfterSec <= 0 ? 1f : Mathf.Clamp01(WatchedSec / _rewardAfterSec);
     }
 }

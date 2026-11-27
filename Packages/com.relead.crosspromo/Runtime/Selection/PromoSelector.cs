@@ -13,6 +13,10 @@ namespace Relead.CrossPromo
         public string PackageVersion = CrossPromoInfo.PackageVersion;
         public DateTime NowUtc = DateTime.UtcNow;
         public PromoOrientation HostOrientation = PromoOrientation.Portrait;
+        /// <summary>Player language ("nl", "nl-NL"); picks media with that lang, else the default-language media.</summary>
+        public string Language;
+        /// <summary>Screen long side / short side (iPad ~1.33, phones ~2.0-2.2). Null = unknown: catalog order decides.</summary>
+        public float? ScreenAspect;
         /// <summary>Media types this build can play. Default: video only.</summary>
         public ICollection<string> PlayableTypes = new[] { PromoMedia.TypeVideo };
         /// <summary>Null = nothing counts as installed.</summary>
@@ -65,21 +69,54 @@ namespace Relead.CrossPromo
         }
 
         /// <summary>
-        /// Best media of a promo: playable type, cached (if <paramref name="requireCached"/> and a cache predicate is set),
-        /// host orientation preferred, otherwise the other orientation. Within an orientation the first in catalog order wins.
+        /// Best media of a promo among the playable (and, if <paramref name="requireCached"/> and a cache predicate is set,
+        /// cached) items, ranked by: 1) host orientation; 2) language: ctx.Language, then default (no lang / en),
+        /// then any other; 3) aspect ratio closest to ctx.ScreenAspect (items without a size rank after sized ones);
+        /// 4) catalog order.
         /// </summary>
         public static PromoMedia ChooseMedia(Promo p, SelectionContext ctx, bool requireCached)
         {
-            PromoMedia other = null;
+            PromoMedia best = null;
+            int bestOrient = 0, bestLang = 0;
+            float bestAspect = 0;
             foreach (var m in p.Media)
             {
                 if (!IsPlayable(m, ctx)) continue;
                 if (requireCached && ctx.IsMediaCached != null && !ctx.IsMediaCached(m)) continue;
-                if (m.Orientation == ctx.HostOrientation) return m;
-                if (other == null) other = m;
+                int orient = m.Orientation == ctx.HostOrientation ? 0 : 1;
+                int lang = LanguageRank(m, ctx.Language);
+                float aspect = AspectDistance(m, ctx.ScreenAspect);
+                if (best == null || orient < bestOrient || (orient == bestOrient && (lang < bestLang || (lang == bestLang && aspect < bestAspect))))
+                {
+                    best = m; bestOrient = orient; bestLang = lang; bestAspect = aspect;
+                }
             }
-            return other;
+            return best;
         }
+
+        /// <summary>0 = the player's language, 1 = default (no lang / en), 2 = another language.</summary>
+        public static int LanguageRank(PromoMedia m, string language)
+        {
+            if (!string.IsNullOrEmpty(m.Lang) && !string.IsNullOrEmpty(language))
+            {
+                int dash = language.IndexOfAny(new[] { '-', '_' });
+                var primary = dash > 0 ? language.Substring(0, dash) : language;
+                if (string.Equals(m.Lang, primary, StringComparison.OrdinalIgnoreCase)) return 0;
+            }
+            return m.IsDefaultLanguage ? 1 : 2;
+        }
+
+        /// <summary>|ln(media / screen)|: symmetric, 0 = same shape. Unknown on either side = 1000 (catalog order decides).</summary>
+        public static float AspectDistance(PromoMedia m, float? screenAspect)
+        {
+            var a = m.AspectRatio;
+            if (a == null || screenAspect == null || screenAspect <= 0) return 1000f;
+            return Math.Abs((float)Math.Log(a.Value / screenAspect.Value));
+        }
+
+        /// <summary>Long side / short side of a screen size, or null for a zero size.</summary>
+        public static float? Aspect(int width, int height)
+            => width <= 0 || height <= 0 ? (float?)null : (float)Math.Max(width, height) / Math.Min(width, height);
 
         /// <summary>Bundle id and Android package are the same for Relead games, so the package identifies the host on every platform.</summary>
         public static bool IsHostApp(GameInfo game, string hostAppIdentifier)

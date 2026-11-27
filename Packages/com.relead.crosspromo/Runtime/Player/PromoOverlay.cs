@@ -6,9 +6,11 @@ using UnityEngine.UI;
 namespace Relead.CrossPromo
 {
     /// <summary>
-    /// Shared full-screen overlay: backdrop, rotatable stage, rotate hint, countdown → close button,
-    /// progress bar, end card. Subclasses provide the content (video, slideshow, later a web view).
-    /// Uses unscaled time, so it works while the host has Time.timeScale = 0.
+    /// Shared full-screen overlay: backdrop, rotatable stage, rotate hint and the ad timeline (WatchClock):
+    /// small Skip top left from skipAfterSec (no reward), download panel over the still-playing content from
+    /// endCardAtSec, top-right countdown that turns into × plus an "Earned! Close" button at rewardAfterSec
+    /// (Completed). Content loops until the player closes. Subclasses provide the content (video, slideshow,
+    /// later a web view). Uses unscaled time, so it works while the host has Time.timeScale = 0.
     /// </summary>
     public abstract class PromoOverlay : MonoBehaviour
     {
@@ -27,12 +29,14 @@ namespace Relead.CrossPromo
         RectTransform _hint;
         RectTransform _phone;
         Button _close;
+        Button _skip;
+        Button _earned;
         Text _countdown;
         Image _progress;
         RectTransform _endCard;
         float _hintElapsed;
         bool _contentStarted;
-        bool _contentFinished;
+        bool _earnedTracked;
         bool _storeClicked;
         bool _finished;
         bool _hintTracked;
@@ -45,17 +49,17 @@ namespace Relead.CrossPromo
         protected abstract void StartContent();
         /// <summary>True while content is actually progressing (the watch clock ticks only then).</summary>
         protected abstract bool ContentRunning { get; }
-        /// <summary>Total length for the progress bar, or null if unknown.</summary>
-        protected abstract float? ContentDuration { get; }
         protected virtual PromoTarget CurrentTarget => Request.Targets.Count > 0 ? Request.Targets[0] : null;
         protected virtual bool IsFallback => false;
+        /// <summary>False when the content already has its own store button (slideshow).</summary>
+        protected virtual bool ShowsDownloadPanel => true;
         protected virtual void TickContent(float dt) { }
 
         public void Begin(PlaybackRequest request, Action<PromoResult> done)
         {
             Request = request;
             _done = done;
-            Clock = new WatchClock(request.SkipAfterSec);
+            Clock = new WatchClock(request.SkipAfterSec, request.EndCardAtSec, request.RewardAfterSec);
             _host = request.HostOrientation != null ? request.HostOrientation() : OrientationLogic.FromSize(Screen.width, Screen.height);
             try
             {
@@ -104,6 +108,17 @@ namespace Relead.CrossPromo
             PromoUI.Place((RectTransform)_close.transform, Vector2.one, Vector2.one, new Vector2(-32, -32), new Vector2(96, 96));
             _close.gameObject.SetActive(false);
 
+            _earned = PromoUI.Button("Earned", Stage, PromoUI.T(Request.Language, "Earned! Close", "Verdiend! Sluiten"),
+                new Color(0.15f, 0.75f, 0.3f, 1f), Color.white, 30, OnEarnedClicked);
+            // Portrait phone ≈ 730 canvas units wide (1080 reference, match 0.5): 32+160 left, 32+96+16+320 right still fit.
+            PromoUI.Place((RectTransform)_earned.transform, Vector2.one, Vector2.one, new Vector2(-32 - 96 - 16, -32), new Vector2(320, 96));
+            _earned.gameObject.SetActive(false);
+
+            _skip = PromoUI.Button("Skip", Stage, PromoUI.T(Request.Language, "Skip", "Overslaan"),
+                new Color(0, 0, 0, 0.45f), new Color(1, 1, 1, 0.85f), 32, OnSkipClicked);
+            PromoUI.Place((RectTransform)_skip.transform, new Vector2(0, 1), new Vector2(0, 1), new Vector2(32, -32), new Vector2(160, 72));
+            _skip.gameObject.SetActive(false);
+
             _hint = PromoUI.Stretch(PromoUI.Rect("RotateHint", Root));
             var hintBg = PromoUI.Panel("Bg", _hint, new Color(0, 0, 0, 0.85f));
             PromoUI.Stretch(hintBg.rectTransform);
@@ -125,16 +140,24 @@ namespace Relead.CrossPromo
                 if (!_contentStarted) UpdateMode(dt);
                 else if (Mode == StageMode.Rotated) LayoutStage();
 
-                if (_contentStarted && !_contentFinished)
+                if (_contentStarted)
                 {
                     TickContent(dt);
+                    if (_finished) return;
                     if (ContentRunning) Clock.Tick(dt);
-                    _close.gameObject.SetActive(Clock.CanSkip);
-                    _countdown.transform.parent.gameObject.SetActive(!Clock.CanSkip);
-                    _countdown.text = Clock.SecondsUntilSkip.ToString();
-                    var dur = ContentDuration;
-                    if (dur.HasValue && dur.Value > 0)
-                        _progress.rectTransform.anchorMax = new Vector2(Mathf.Clamp01(Clock.WatchedSec / dur.Value), 1);
+                    _skip.gameObject.SetActive(Clock.CanSkip);
+                    bool earned = Clock.Earned;
+                    _close.gameObject.SetActive(earned);
+                    _earned.gameObject.SetActive(earned);
+                    _countdown.transform.parent.gameObject.SetActive(!earned);
+                    _countdown.text = Clock.SecondsUntilReward.ToString();
+                    _progress.rectTransform.anchorMax = new Vector2(Clock.RewardProgress, 1);
+                    if (Clock.ShowEndCard && _endCard == null && ShowsDownloadPanel) ShowEndCard();
+                    if (earned && !_earnedTracked)
+                    {
+                        _earnedTracked = true;
+                        Track("promo_earned", new Dictionary<string, object> { { "watchedSec", Clock.WatchedSec } });
+                    }
                 }
                 if (_hint.gameObject.activeSelf)
                 {
@@ -197,22 +220,24 @@ namespace Relead.CrossPromo
             Stage.localEulerAngles = new Vector3(0, 0, z);
         }
 
+        /// <summary>Top-right ×: only visible once earned.</summary>
         void OnCloseClicked()
         {
-            if (_contentFinished) { Finish(PromoOutcome.Completed, null); return; }
-            if (!Clock.CanSkip) return;
-            StopContent();
-            Finish(PromoOutcome.Skipped, null);
+            if (!Clock.Earned) return;
+            Finish(PromoOutcome.Completed, null);
         }
 
-        /// <summary>Subclasses call this when the content reached its end: show the end card.</summary>
-        protected void ContentFinished()
+        void OnEarnedClicked()
         {
-            if (_contentFinished || _finished) return;
-            _contentFinished = true;
-            _progress.rectTransform.anchorMax = Vector2.one;
-            _countdown.transform.parent.gameObject.SetActive(false);
-            ShowEndCard();
+            if (!Clock.Earned) return;
+            Finish(PromoOutcome.Completed, null);
+        }
+
+        /// <summary>Top-left Skip: no reward before rewardAfterSec, Completed after.</summary>
+        void OnSkipClicked()
+        {
+            if (!Clock.CanSkip) return;
+            Finish(Clock.Earned ? PromoOutcome.Completed : PromoOutcome.Skipped, null);
         }
 
         protected virtual void StopContent() { }
@@ -245,35 +270,66 @@ namespace Relead.CrossPromo
             catch (Exception e) { Debug.LogException(e); }
         }
 
+        /// <summary>
+        /// Download panel at the bottom, over the still-playing content: icon, name, headline, store button.
+        /// Wide stage: one row (icon | texts | button). Tall stage (portrait, ≈ 730 units wide): icon + texts on top,
+        /// full-width button below.
+        /// </summary>
         void ShowEndCard()
         {
             var target = CurrentTarget;
-            _endCard = PromoUI.Stretch(PromoUI.Rect("EndCard", Stage));
-            var bg = PromoUI.Panel("Bg", _endCard, new Color(0.05f, 0.05f, 0.08f, 0.92f));
-            PromoUI.Stretch(bg.rectTransform);
+            var stageSize = Stage.rect.size;
+            bool tall = stageSize.y > stageSize.x;
+            bool hasStore = target != null && !string.IsNullOrEmpty(target.StoreUrl);
+            bool hasIcon = target != null && target.Icon != null;
+            const float pad = 24, iconSize = 176, buttonH = 130;
 
-            var card = PromoUI.Rect("Card", _endCard);
-            PromoUI.Place(card, new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f), Vector2.zero, new Vector2(860, 760));
+            var bg = PromoUI.Panel("EndCard", Stage, new Color(0.05f, 0.05f, 0.08f, 0.85f), true);
+            _endCard = bg.rectTransform;
+            _endCard.anchorMin = new Vector2(0, 0);
+            _endCard.anchorMax = new Vector2(1, 0);
+            _endCard.pivot = new Vector2(0.5f, 0);
+            float height = tall ? pad + iconSize + (hasStore ? pad + buttonH : 0) + pad : pad + iconSize + pad;
+            _endCard.offsetMin = new Vector2(32, 32);
+            _endCard.offsetMax = new Vector2(-32, 32 + height);
 
-            if (target != null && target.Icon != null)
+            // Info row: top-anchored, iconSize high.
+            float left = pad;
+            if (hasIcon)
             {
-                var icon = PromoUI.Rect("Icon", card);
+                var icon = PromoUI.Rect("Icon", _endCard);
                 icon.gameObject.AddComponent<RawImage>().texture = target.Icon;
-                PromoUI.Place(icon, new Vector2(0.5f, 1), new Vector2(0.5f, 1), Vector2.zero, new Vector2(260, 260));
+                PromoUI.Place(icon, new Vector2(0, 1), new Vector2(0, 1), new Vector2(pad, -pad), new Vector2(iconSize, iconSize));
+                left = pad + iconSize + pad;
             }
-            var name = PromoUI.Label("Name", card, target != null && target.Game != null ? target.Game.Name : "", 64, Color.white, TextAnchor.MiddleCenter, FontStyle.Bold);
-            PromoUI.Place(name.rectTransform, new Vector2(0.5f, 1), new Vector2(0.5f, 1), new Vector2(0, -280), new Vector2(860, 90));
-            var headline = PromoUI.Label("Headline", card, target != null ? target.Headline : "", 44, new Color(1, 1, 1, 0.85f));
-            PromoUI.Place(headline.rectTransform, new Vector2(0.5f, 1), new Vector2(0.5f, 1), new Vector2(0, -380), new Vector2(860, 140));
+            float right = !tall && hasStore ? pad + 400 + pad : pad;
+            var name = PromoUI.Label("Name", _endCard, target != null && target.Game != null ? target.Game.Name : "", tall ? 48 : 56, Color.white, TextAnchor.LowerLeft, FontStyle.Bold);
+            var nrt = name.rectTransform;
+            nrt.anchorMin = new Vector2(0, 1); nrt.anchorMax = new Vector2(1, 1); nrt.pivot = new Vector2(0.5f, 1);
+            nrt.offsetMin = new Vector2(left, -pad - iconSize * 0.45f); nrt.offsetMax = new Vector2(-right, -pad);
+            var headline = PromoUI.Label("Headline", _endCard, target != null ? target.Headline : "", tall ? 32 : 38, new Color(1, 1, 1, 0.85f), TextAnchor.UpperLeft);
+            var hrt = headline.rectTransform;
+            hrt.anchorMin = new Vector2(0, 1); hrt.anchorMax = new Vector2(1, 1); hrt.pivot = new Vector2(0.5f, 1);
+            hrt.offsetMin = new Vector2(left, -pad - iconSize); hrt.offsetMax = new Vector2(-right, -pad - iconSize * 0.45f - 4);
 
-            if (target != null && !string.IsNullOrEmpty(target.StoreUrl))
+            if (hasStore)
             {
                 var cta = string.IsNullOrEmpty(target.Cta) ? PromoUI.T(Request.Language, "Get it", "Downloaden") : target.Cta;
-                var b = PromoUI.Button("Cta", card, cta, new Color(0.15f, 0.75f, 0.3f, 1f), Color.white, 52, () => ClickStore(target));
-                PromoUI.Place((RectTransform)b.transform, new Vector2(0.5f, 0), new Vector2(0.5f, 0), Vector2.zero, new Vector2(560, 140));
+                var b = PromoUI.Button("Cta", _endCard, cta, new Color(0.15f, 0.75f, 0.3f, 1f), Color.white, 52, () => ClickStore(target));
+                var brt = (RectTransform)b.transform;
+                if (tall)
+                {
+                    brt.anchorMin = new Vector2(0, 0); brt.anchorMax = new Vector2(1, 0); brt.pivot = new Vector2(0.5f, 0);
+                    brt.offsetMin = new Vector2(pad, pad); brt.offsetMax = new Vector2(-pad, pad + buttonH);
+                }
+                else PromoUI.Place(brt, new Vector2(1, 0.5f), new Vector2(1, 0.5f), new Vector2(-pad, 0), new Vector2(400, buttonH));
             }
+            // Buttons stay on top of the panel.
+            _skip.transform.SetAsLastSibling();
+            _earned.transform.SetAsLastSibling();
+            _countdown.transform.parent.SetAsLastSibling();
             _close.transform.SetAsLastSibling();
-            _close.gameObject.SetActive(true);
+            Track("promo_end_card", null);
         }
 
         void Finish(PromoOutcome outcome, string reason)

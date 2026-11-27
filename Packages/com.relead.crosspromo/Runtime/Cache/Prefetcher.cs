@@ -50,6 +50,8 @@ namespace Relead.CrossPromo
                 PackageVersion = ctx.PackageVersion,
                 NowUtc = ctx.NowUtc,
                 HostOrientation = ctx.HostOrientation,
+                Language = ctx.Language,
+                ScreenAspect = ctx.ScreenAspect,
                 PlayableTypes = ctx.PlayableTypes,
                 IsInstalled = ctx.IsInstalled,
                 RequireStoreLink = ctx.RequireStoreLink,

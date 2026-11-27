@@ -106,6 +106,80 @@ namespace Relead.CrossPromo.Tests
             Assert.AreEqual("b1l.mp4", PromoSelector.ChooseMedia(c.FindPromo("b1"), ctx, false).Url, "other orientation if no match");
         }
 
+        static Promo Variants()
+        {
+            var json = @"{""schemaVersion"":1,""promos"":[{""id"":""v"",""gameId"":""a"",""weight"":1,""media"":[
+                {""type"":""video"",""orientation"":""portrait"",""url"":""phone.mp4"",""width"":720,""height"":1560},
+                {""type"":""video"",""orientation"":""portrait"",""url"":""16x9.mp4"",""width"":720,""height"":1280},
+                {""type"":""video"",""orientation"":""portrait"",""url"":""ipad.mp4"",""width"":960,""height"":1280},
+                {""type"":""video"",""orientation"":""portrait"",""lang"":""nl"",""url"":""phone-nl.mp4"",""width"":720,""height"":1560},
+                {""type"":""video"",""orientation"":""portrait"",""lang"":""nl"",""url"":""ipad-nl.mp4"",""width"":960,""height"":1280},
+                {""type"":""video"",""orientation"":""portrait"",""lang"":""de"",""url"":""phone-de.mp4"",""width"":720,""height"":1560},
+                {""type"":""video"",""orientation"":""landscape"",""lang"":""nl"",""url"":""land-nl.mp4"",""width"":1280,""height"":720}]}]}";
+            return CatalogParser.Parse(json).Catalog.Promos[0];
+        }
+
+        static string Pick(Promo p, string lang, float? aspect, PromoOrientation host = PromoOrientation.Portrait, Func<PromoMedia, bool> cached = null)
+        {
+            var ctx = Ctx();
+            ctx.Language = lang;
+            ctx.ScreenAspect = aspect;
+            ctx.HostOrientation = host;
+            ctx.IsMediaCached = cached;
+            return PromoSelector.ChooseMedia(p, ctx, cached != null).Url;
+        }
+
+        [Test]
+        public void LanguageThenClosestAspect()
+        {
+            var p = Variants();
+            Assert.AreEqual("phone.mp4", Pick(p, "en", 2.17f), "iPhone 19.5:9");
+            Assert.AreEqual("16x9.mp4", Pick(p, "en", 16f / 9f), "16:9 phone");
+            Assert.AreEqual("ipad.mp4", Pick(p, "en", 4f / 3f), "iPad");
+            Assert.AreEqual("ipad.mp4", Pick(p, "fr", 1.43f), "iPad Pro, no fr cut: default language");
+            Assert.AreEqual("phone-nl.mp4", Pick(p, "nl", 2.17f));
+            Assert.AreEqual("phone-nl.mp4", Pick(p, "nl-NL", 1.78f), "no nl 16:9 cut: language beats ratio");
+            Assert.AreEqual("ipad-nl.mp4", Pick(p, "nl", 4f / 3f));
+            Assert.AreEqual("phone-de.mp4", Pick(p, "de", 4f / 3f), "only de cut is phone-shaped, still de");
+            Assert.AreEqual("phone.mp4", Pick(p, null, null), "no language, no screen: first default in catalog order");
+            Assert.AreEqual("phone.mp4", Pick(p, "en", null));
+        }
+
+        [Test]
+        public void OrientationBeatsLanguage()
+        {
+            var p = Variants();
+            Assert.AreEqual("land-nl.mp4", Pick(p, "nl", 2.17f, PromoOrientation.Landscape));
+            Assert.AreEqual("land-nl.mp4", Pick(p, "en", 2.17f, PromoOrientation.Landscape), "other language beats rotating");
+        }
+
+        [Test]
+        public void BestCachedVariantWhenPreferredNotCached()
+        {
+            var p = Variants();
+            Assert.AreEqual("phone.mp4", Pick(p, "nl", 2.17f, cached: m => m.Url == "phone.mp4" || m.Url == "ipad.mp4"));
+            Assert.AreEqual("ipad-nl.mp4", Pick(p, "nl", 2.17f, cached: m => m.Url == "ipad-nl.mp4" || m.Url == "phone.mp4"), "language before ratio among cached");
+        }
+
+        [Test]
+        public void MediaWithoutSizeRanksAfterSizedOnes()
+        {
+            var json = @"{""schemaVersion"":1,""promos"":[{""id"":""v"",""gameId"":""a"",""weight"":1,""media"":[
+                {""type"":""video"",""orientation"":""portrait"",""url"":""old.mp4""},
+                {""type"":""video"",""orientation"":""portrait"",""url"":""ipad.mp4"",""width"":960,""height"":1280}]}]}";
+            var p = CatalogParser.Parse(json).Catalog.Promos[0];
+            Assert.AreEqual("ipad.mp4", Pick(p, "en", 2.17f));
+            Assert.AreEqual("old.mp4", Pick(p, "en", null), "no screen size: catalog order");
+        }
+
+        [Test]
+        public void ScreenAspectOfSize()
+        {
+            Assert.AreEqual(2532f / 1170f, PromoSelector.Aspect(1170, 2532).Value, 1e-4);
+            Assert.AreEqual(4f / 3f, PromoSelector.Aspect(2048, 1536).Value, 1e-4);
+            Assert.IsNull(PromoSelector.Aspect(0, 100));
+        }
+
         [Test]
         public void CachedOtherOrientationBeatsUncachedMatch()
         {

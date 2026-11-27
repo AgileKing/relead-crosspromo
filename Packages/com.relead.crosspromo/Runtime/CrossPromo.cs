@@ -202,6 +202,8 @@ namespace Relead.CrossPromo
             {
                 PromoId = promoId,
                 SkipAfterSec = rules.SkipAfterSec,
+                EndCardAtSec = rules.EndCardAtSec,
+                RewardAfterSec = rules.RewardAfterSec,
                 RotateHintTimeoutSec = rules.RotateHintTimeoutSec,
                 Language = _config.Language,
                 HostOrientation = () => host,
@@ -269,6 +271,8 @@ namespace Relead.CrossPromo
             Platform = _platform,
             NowUtc = DateTime.UtcNow,
             HostOrientation = _config.HostOrientation != null ? _config.HostOrientation() : HostShape(),
+            Language = _config.Language,
+            ScreenAspect = PromoSelector.Aspect(Screen.width, Screen.height),
             IsInstalled = _installed.IsInstalled,
             RequireStoreLink = _config.RequireStoreLink,
         };

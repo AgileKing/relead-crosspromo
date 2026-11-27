@@ -51,7 +51,18 @@ namespace Relead.CrossPromo.Tests
             var c = r.Catalog;
             Assert.AreEqual(6, c.Games.Count);
             Assert.IsNull(c.FindGame("gpking").Store.Ios, "missing key = no store link");
-            Assert.NotNull(c.FindPromo("kingofgames-placeholder-01"));
+            var kp = c.FindPromo("kingofgames-kp001");
+            Assert.NotNull(kp);
+            var ctx = new SelectionContext { HostGameId = "puzzleking", Platform = PromoPlatform.Android, HostOrientation = PromoOrientation.Landscape };
+            ctx.Language = "nl"; ctx.ScreenAspect = 4f / 3f;
+            var ipadNl = PromoSelector.ChooseMedia(kp, ctx, false);
+            Assert.AreEqual("nl", ipadNl.Lang);
+            Assert.AreEqual(960, ipadNl.Width, "live iPad cut");
+            ctx.Language = "en"; ctx.ScreenAspect = 2.17f;
+            var phoneEn = PromoSelector.ChooseMedia(kp, ctx, false);
+            Assert.IsTrue(phoneEn.IsDefaultLanguage);
+            Assert.AreEqual(1560, phoneEn.Width, "live wide-phone cut");
+            Assert.AreSame(kp.Media[0], phoneEn, "first media = default-language phone cut (what 0.1.1 builds take)");
 
             foreach (var g in Bundled().games)
             {

@@ -6,9 +6,9 @@ namespace Relead.CrossPromo
 {
     public enum PromoOutcome
     {
-        /// <summary>Watched to the end. The host grants the reward.</summary>
+        /// <summary>Closed after rewardAfterSec (watched long enough). The host grants the reward.</summary>
         Completed,
-        /// <summary>Closed early (after skipAfterSec). No reward.</summary>
+        /// <summary>Skipped/closed before rewardAfterSec. No reward.</summary>
         Skipped,
         /// <summary>Could not play. No reward.</summary>
         Failed,
@@ -47,7 +47,9 @@ namespace Relead.CrossPromo
         public string LocalPath;
         /// <summary>One target for a video; several for the fallback slideshow.</summary>
         public List<PromoTarget> Targets = new List<PromoTarget>();
-        public float SkipAfterSec = 5f;
+        public float SkipAfterSec = 0f;
+        public float EndCardAtSec = 25f;
+        public float RewardAfterSec = 30f;
         public float RotateHintTimeoutSec = 3f;
         public string Language = "en";
         public Func<PromoOrientation> HostOrientation;

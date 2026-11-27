@@ -1,9 +1,11 @@
 {
   "schemaVersion": 1,
-  "updated": "2026-11-27T09:33:41Z",
+  "updated": "2026-11-27T18:37:57Z",
   "rules": {
     "maxPerDay": 3,
-    "skipAfterSec": 5,
+    "skipAfterSec": 0,
+    "endCardAtSec": 25,
+    "rewardAfterSec": 30,
     "rotateHintTimeoutSec": 3
   },
   "games": [
@@ -70,37 +72,195 @@
   ],
   "promos": [
     {
-      "id": "kingofgames-placeholder-01",
+      "id": "kingofgames-2026-11",
+      "gameId": "kingofgames",
+      "weight": 0,
+      "start": null,
+      "end": null,
+      "minPackageVersion": "0.1.0",
+      "headline": {
+        "en": "Build your own games park!",
+        "nl": "Bouw je eigen spellenpark!"
+      },
+      "cta": {
+        "en": "Play free",
+        "nl": "Gratis spelen"
+      },
+      "poster": "games/kingofgames/kingofgames-2026-11/poster.jpg",
+      "media": [
+        {
+          "type": "video",
+          "orientation": "landscape",
+          "url": "games/kingofgames/kingofgames-2026-11/landscape.mp4",
+          "durationSec": 30.0,
+          "bytes": 4736638,
+          "sha256": "36515d5c664dd8d789841c5a2f15880d438c490e17fb980b6fa74d07702c3aea",
+          "width": 1280,
+          "height": 720
+        }
+      ]
+    },
+    {
+      "id": "kingofgames-kp001",
       "gameId": "kingofgames",
       "weight": 10,
       "start": null,
       "end": null,
       "minPackageVersion": "0.1.0",
       "headline": {
-        "en": "TEST: Build your own games park!",
-        "nl": "TEST: Bouw je eigen spellenpark!"
+        "en": "Build your own games park!",
+        "nl": "Bouw je eigen spellenpark!"
       },
       "cta": {
         "en": "Play free",
         "nl": "Gratis spelen"
       },
-      "poster": "games/kingofgames/kingofgames-placeholder-01/poster.png",
+      "poster": "games/kingofgames/kingofgames-kp001/poster.jpg",
       "media": [
         {
           "type": "video",
           "orientation": "landscape",
-          "url": "games/kingofgames/kingofgames-placeholder-01/landscape.mp4",
-          "durationSec": 10,
-          "bytes": 2010052,
-          "sha256": "de246fbf32b9cf3f144a6497e710d0fd12a5fef9c708a991fe7ad9772f842bd8"
+          "url": "games/kingofgames/kingofgames-kp001/landscape-1560x720.mp4",
+          "durationSec": 30.0,
+          "width": 1560,
+          "height": 720,
+          "bytes": 4527840,
+          "sha256": "a005c846de05ab0b3a0c31a5e5179a0371b8487e0aceafcac96a408af3111ea9"
+        },
+        {
+          "type": "video",
+          "orientation": "landscape",
+          "url": "games/kingofgames/kingofgames-kp001/landscape-1280x720.mp4",
+          "durationSec": 30.0,
+          "width": 1280,
+          "height": 720,
+          "bytes": 4525088,
+          "sha256": "b8614cc3abb8fe625d5c070a3644fb07d84eb5718faba7ecd3aef6fe2b699f4b"
+        },
+        {
+          "type": "video",
+          "orientation": "landscape",
+          "url": "games/kingofgames/kingofgames-kp001/landscape-960x720.mp4",
+          "durationSec": 30.0,
+          "width": 960,
+          "height": 720,
+          "bytes": 4542959,
+          "sha256": "02068b07204a66a4b8a5f9201aabc146316d7959a6d162f84860f83af95830df"
+        },
+        {
+          "type": "video",
+          "orientation": "landscape",
+          "lang": "nl",
+          "url": "games/kingofgames/kingofgames-kp001/landscape-nl-1560x720.mp4",
+          "durationSec": 30.0,
+          "width": 1560,
+          "height": 720,
+          "bytes": 4519393,
+          "sha256": "ccdc0faa0a84db1c97b729edd00a7f8ab7d15e88ae22bf59e7478ab5043e4c36"
+        },
+        {
+          "type": "video",
+          "orientation": "landscape",
+          "lang": "nl",
+          "url": "games/kingofgames/kingofgames-kp001/landscape-nl-1280x720.mp4",
+          "durationSec": 30.0,
+          "width": 1280,
+          "height": 720,
+          "bytes": 4497959,
+          "sha256": "092161e8101b6405ba28bb64829d23eeea06e3bf560a6b406b7b1570fe030974"
+        },
+        {
+          "type": "video",
+          "orientation": "landscape",
+          "lang": "nl",
+          "url": "games/kingofgames/kingofgames-kp001/landscape-nl-960x720.mp4",
+          "durationSec": 30.0,
+          "width": 960,
+          "height": 720,
+          "bytes": 4537168,
+          "sha256": "c9784445a10d5b70c398b8b2b27ce0522c04bc7e516db5a3c59f71acb1fcad90"
+        }
+      ]
+    },
+    {
+      "id": "puzzleking-pp001",
+      "gameId": "puzzleking",
+      "weight": 10,
+      "start": null,
+      "end": null,
+      "minPackageVersion": "0.1.0",
+      "headline": {
+        "en": "19 logic puzzles in one app",
+        "nl": "19 logicapuzzels in één app"
+      },
+      "cta": {
+        "en": "Play free",
+        "nl": "Gratis spelen"
+      },
+      "poster": "games/puzzleking/puzzleking-pp001/poster.jpg",
+      "media": [
+        {
+          "type": "video",
+          "orientation": "portrait",
+          "url": "games/puzzleking/puzzleking-pp001/portrait-719x1560.mp4",
+          "durationSec": 26.0,
+          "width": 719,
+          "height": 1560,
+          "bytes": 3515365,
+          "sha256": "207161682baff06480d727c64925d7757ee4cfd5e837327fe3c5529a32bb58ea"
         },
         {
           "type": "video",
           "orientation": "portrait",
-          "url": "games/kingofgames/kingofgames-placeholder-01/portrait.mp4",
-          "durationSec": 10,
-          "bytes": 2005021,
-          "sha256": "12c7894f56cabd27ec18b3639b927d8707b4601ef0b68be18b17716544dd0903"
+          "url": "games/puzzleking/puzzleking-pp001/portrait-720x1280.mp4",
+          "durationSec": 26.0,
+          "width": 720,
+          "height": 1280,
+          "bytes": 3593462,
+          "sha256": "9b0d0ac5721a0f1cb6d6f18822b17fec70d4373ca8f368465c93ef408d777243"
+        },
+        {
+          "type": "video",
+          "orientation": "portrait",
+          "url": "games/puzzleking/puzzleking-pp001/portrait-960x1280.mp4",
+          "durationSec": 26.0,
+          "width": 960,
+          "height": 1280,
+          "bytes": 3592257,
+          "sha256": "b37810a0e16a1359e2477f3617647eca7a2d2cb7ed47a2d75d186576d0a0bf44"
+        },
+        {
+          "type": "video",
+          "orientation": "portrait",
+          "lang": "nl",
+          "url": "games/puzzleking/puzzleking-pp001/portrait-nl-719x1560.mp4",
+          "durationSec": 26.0,
+          "width": 719,
+          "height": 1560,
+          "bytes": 3522008,
+          "sha256": "e16784dc05d52118738d1eff3768ae0af9781fac62e204e9e3eee43fe35108e0"
+        },
+        {
+          "type": "video",
+          "orientation": "portrait",
+          "lang": "nl",
+          "url": "games/puzzleking/puzzleking-pp001/portrait-nl-720x1280.mp4",
+          "durationSec": 26.0,
+          "width": 720,
+          "height": 1280,
+          "bytes": 3614415,
+          "sha256": "13f819beb9bc941858190ce219d1b924767819c0374bb4f20bfccadeaa084fbf"
+        },
+        {
+          "type": "video",
+          "orientation": "portrait",
+          "lang": "nl",
+          "url": "games/puzzleking/puzzleking-pp001/portrait-nl-960x1280.mp4",
+          "durationSec": 26.0,
+          "width": 960,
+          "height": 1280,
+          "bytes": 3616810,
+          "sha256": "ff9f704c25784cf2b7ae4783c7bf6b22863d695f8ed1f5ea5181ea5daaa2eff5"
         }
       ]
     }

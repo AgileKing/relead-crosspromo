@@ -48,6 +48,11 @@ namespace Relead.CrossPromo
                 if (maxPerDay != null && maxPerDay >= 0) c.Rules.MaxPerDay = (int)Math.Min(maxPerDay.Value, int.MaxValue);
                 var skip = JsonRead.Num(rules, "skipAfterSec");
                 if (skip != null && skip >= 0) c.Rules.SkipAfterSec = (float)skip.Value;
+                var endCard = JsonRead.Num(rules, "endCardAtSec");
+                if (endCard != null && endCard >= 0) c.Rules.EndCardAtSec = (float)endCard.Value;
+                var reward = JsonRead.Num(rules, "rewardAfterSec");
+                if (reward != null && reward >= 0) c.Rules.RewardAfterSec = (float)reward.Value;
+                if (c.Rules.RewardAfterSec < c.Rules.EndCardAtSec) { r.Warnings.Add("rules.rewardAfterSec < endCardAtSec, raised"); c.Rules.RewardAfterSec = c.Rules.EndCardAtSec; }
                 var hint = JsonRead.Num(rules, "rotateHintTimeoutSec");
                 if (hint != null && hint >= 0) c.Rules.RotateHintTimeoutSec = (float)hint.Value;
             }
@@ -160,12 +165,18 @@ namespace Relead.CrossPromo
             var url = JsonRead.Str(o, "url");
             if (string.IsNullOrEmpty(type) || orientation == null || string.IsNullOrEmpty(url)) return null;
             var sha = JsonRead.Str(o, "sha256");
+            var lang = JsonRead.Str(o, "lang");
+            var w = JsonRead.Long(o, "width");
+            var h = JsonRead.Long(o, "height");
             return new PromoMedia
             {
                 Type = type,
                 Orientation = orientation.Value,
                 Url = url,
                 DurationSec = JsonRead.Num(o, "durationSec"),
+                Lang = string.IsNullOrWhiteSpace(lang) ? null : lang.Trim().ToLowerInvariant(),
+                Width = w != null && w > 0 && w <= int.MaxValue ? (int)w.Value : (int?)null,
+                Height = h != null && h > 0 && h <= int.MaxValue ? (int)h.Value : (int?)null,
                 Bytes = JsonRead.Long(o, "bytes"),
                 Sha256 = string.IsNullOrEmpty(sha) ? null : sha.ToLowerInvariant(),
             };

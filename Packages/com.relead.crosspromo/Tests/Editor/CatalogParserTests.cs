@@ -111,10 +111,47 @@ namespace Relead.CrossPromo.Tests
         [Test]
         public void NegativeRulesKeepDefaults()
         {
-            var json = @"{""schemaVersion"":1,""rules"":{""maxPerDay"":-1,""skipAfterSec"":""5""},""promos"":[]}";
+            var json = @"{""schemaVersion"":1,""rules"":{""maxPerDay"":-1,""skipAfterSec"":""5"",""endCardAtSec"":-1,""rewardAfterSec"":""x""},""promos"":[]}";
             var c = CatalogParser.Parse(json).Catalog;
             Assert.AreEqual(3, c.Rules.MaxPerDay);
-            Assert.AreEqual(5f, c.Rules.SkipAfterSec);
+            Assert.AreEqual(0f, c.Rules.SkipAfterSec);
+            Assert.AreEqual(25f, c.Rules.EndCardAtSec);
+            Assert.AreEqual(30f, c.Rules.RewardAfterSec);
+        }
+
+        [Test]
+        public void ParsesAdTimelineRules()
+        {
+            var c = CatalogParser.Parse(@"{""schemaVersion"":1,""rules"":{""skipAfterSec"":0,""endCardAtSec"":20,""rewardAfterSec"":35},""promos"":[]}").Catalog;
+            Assert.AreEqual(0f, c.Rules.SkipAfterSec);
+            Assert.AreEqual(20f, c.Rules.EndCardAtSec);
+            Assert.AreEqual(35f, c.Rules.RewardAfterSec);
+
+            var r = CatalogParser.Parse(@"{""schemaVersion"":1,""rules"":{""endCardAtSec"":25,""rewardAfterSec"":10},""promos"":[]}");
+            Assert.AreEqual(25f, r.Catalog.Rules.RewardAfterSec, "reward never before the download panel");
+            Assert.IsNotEmpty(r.Warnings);
+        }
+
+        [Test]
+        public void ParsesMediaLanguageAndSize()
+        {
+            var json = @"{""schemaVersion"":1,""promos"":[{""id"":""p"",""gameId"":""g"",""weight"":1,""media"":[
+                {""type"":""video"",""orientation"":""portrait"",""url"":""a.mp4"",""width"":720,""height"":1560},
+                {""type"":""video"",""orientation"":""portrait"",""url"":""b.mp4"",""lang"":""NL "",""width"":960,""height"":1280},
+                {""type"":""video"",""orientation"":""portrait"",""url"":""c.mp4"",""lang"":""en"",""width"":0,""height"":""x""}]}]}";
+            var m = CatalogParser.Parse(json).Catalog.Promos[0].Media;
+            Assert.IsNull(m[0].Lang);
+            Assert.AreEqual(720, m[0].Width);
+            Assert.AreEqual(1560, m[0].Height);
+            Assert.AreEqual(1560f / 720f, m[0].AspectRatio.Value, 1e-4);
+            Assert.IsTrue(m[0].IsDefaultLanguage);
+            Assert.AreEqual("nl", m[1].Lang);
+            Assert.IsFalse(m[1].IsDefaultLanguage);
+            Assert.AreEqual(1280f / 960f, m[1].AspectRatio.Value, 1e-4);
+            Assert.IsTrue(m[2].IsDefaultLanguage, "en counts as default");
+            Assert.IsNull(m[2].Width, "0 = unknown");
+            Assert.IsNull(m[2].Height);
+            Assert.IsNull(m[2].AspectRatio);
         }
 
         [Test]

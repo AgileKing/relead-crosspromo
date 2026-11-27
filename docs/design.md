@@ -5,7 +5,7 @@ Decided 2026-11-27 with the user. Phase 1 = option A (video). Everything is prep
 ## Goals
 
 - Every Relead game (King of Games, GP King, Puzzle King, Chopper King, Breakout King, …; one new game per month) promotes the other games.
-- The player chooses to watch a promo (rewarded slot) and gets a reward from the host game when it finishes.
+- The player chooses to watch a promo (rewarded slot) and gets a reward from the host game after watching 30 s (`rewardAfterSec`).
 - A new game is promoted in all existing games **without updating those games**: only the content catalog changes.
 - Measure everything: shown, completed, skipped, store click, and installs caused by a promo.
 - Platforms: Android, iOS, Windows (UWP / Microsoft Store). WebGL ignored.
@@ -13,7 +13,7 @@ Decided 2026-11-27 with the user. Phase 1 = option A (video). Everything is prep
 ## Store rules (hard constraints)
 
 - Reward for **watching** only. Never a reward that depends on installing or playing another game (Apple 3.2.2, Google Play incentivized-install policy).
-- Close button visible after `skipAfterSec` (default 5 s). Reward only on completion.
+- Ad timeline (decision 0008): Skip top left from `skipAfterSec` (0 = from the start, no reward), download panel over the playing video at `endCardAtSec` (25 s), "Earned! Close" next to the top-right × at `rewardAfterSec` (30 s) = reward. Content loops until closed.
 - No downloaded code (Apple 2.5.2). Video/images/JSON are fine. HTML/JS in the system web view (option C) is allowed.
 - No advertising ID (IDFA/GAID), no ATT prompt. Identifiers: iOS `identifierForVendor` (same for all our apps on a device), Android/Windows: our own random install ID.
 
@@ -24,14 +24,14 @@ Decided 2026-11-27 with the user. Phase 1 = option A (video). Everything is prep
 3. Prefetch: keep **two** videos downloaded ahead in `persistentDataPath`, **only on wifi** (`Application.internetReachability == ReachableViaLocalAreaNetwork`), verified by `bytes`/`sha256`. After one is shown it rotates out and the next is fetched on wifi; older files are evicted (disk cap). A promo is only "available" when its media is cached, so showing it is instant and works offline.
 4. Selection: filter out the host game itself, games already installed, expired/not started promos, promos needing a newer `minPackageVersion`, media types this build can't play; then weighted random; respect `maxPerDay`.
 5. `CrossPromo.IsReady` → host enables its "watch for reward" button. `CrossPromo.Show(onResult)` → result `Completed | Skipped | Failed` plus `StoreClicked` flag. Host grants the reward on `Completed`.
-6. End card: icon, headline, "Get it" button → store page with campaign parameters, close button.
+6. Download panel (from `endCardAtSec`, over the still-playing video): icon, name, headline, "Get it" button → store page with campaign parameters.
 7. Offline fallback: no cached video (no wifi yet, no catalog, first launch offline) → `IsReady` is still true and `Show` plays a **slideshow** of screenshots of other Relead games with name + store button. The screenshots are **bundled in the package** only (a few JPGs per game, ~1080 px, plus name and store ids) — never downloaded; a new package version refreshes them. Same rules as a video: close after `skipAfterSec`, reward on completion. Decided 2026-11-27 (user).
 
 ## Portrait vs landscape
 
 Games are locked to portrait or landscape; promos may exist in one or both orientations.
 
-- Pick media matching the host's current orientation if available.
+- Pick media matching the host's current orientation if available; within it the player's language (else the default), then the aspect ratio closest to the screen (catalog `lang`, `width`/`height`; decision 0008).
 - Otherwise: overlay with an **animated rotate-phone icon**; playback starts when `Input.deviceOrientation` matches the media. The package never changes `Screen.orientation` — the host stays locked, the promo UI is drawn rotated 90° inside it.
 - No rotation within `rotateHintTimeoutSec` (default 3 s): play letterboxed in the current orientation.
 - Same rule later for playables (catalog says which orientation a playable needs).
@@ -50,7 +50,7 @@ Games are locked to portrait or landscape; promos may exist in one or both orien
 
 ## Tracking events (to api.relead.com)
 
-`promo_catalog_loaded`, `promo_shown`, `promo_rotate_hint`, `promo_completed` (watch seconds), `promo_skipped`, `promo_store_click`, `promo_failed` (reason), `first_open` (with install referrer / vendor id). Each carries hostGameId, promoId, targetGameId, platform, packageVersion, install id. Behind an `ITracker` interface; queue offline, flush later.
+`promo_catalog_loaded`, `promo_shown`, `promo_rotate_hint`, `promo_completed` (watch seconds), `promo_skipped`, `promo_end_card`, `promo_earned`, `promo_store_click`, `promo_failed` (reason), `first_open` (with install referrer / vendor id). Each carries hostGameId, promoId, targetGameId, platform, packageVersion, install id. Behind an `ITracker` interface; queue offline, flush later.
 
 ## Hosting
 

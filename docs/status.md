@@ -1,4 +1,10 @@
-# Status / handoff (2026-11-27, end of first session)
+# Status / handoff
+
+## 0.1.2 (2026-11-27)
+
+The 30 s ad timeline, plus media per language and screen ratio (decision 0008). 129 EditMode tests pass. Timeline, ranking and parsing are covered by tests. **The new overlay layout is not checked visually yet**: the Skip/Earned/× row and the download panel in portrait (≈ 730 canvas units wide) and landscape. Check it in the editor tester window or on a device, with an nl and an iPad cut (kingofgames-kp001 / puzzleking-pp001 are live).
+
+## First session (2026-11-27)
 
 All 10 KICKOFF steps have code. 111 EditMode tests pass. Tested in the editor only: no device build has been made yet.
 

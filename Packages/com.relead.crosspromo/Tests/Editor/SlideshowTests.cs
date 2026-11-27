@@ -32,7 +32,17 @@ namespace Relead.CrossPromo.Tests
             Assert.AreEqual(6f, SlideshowPromoPlayer.SlideSeconds(1));
             Assert.AreEqual(5f, SlideshowPromoPlayer.SlideSeconds(3));
             Assert.AreEqual(3f, SlideshowPromoPlayer.SlideSeconds(10));
-            Assert.That(SlideshowPromoPlayer.SlideSeconds(1), Is.GreaterThan(5f), "one slide still outlasts the 5 s skip");
+        }
+
+        [Test]
+        public void SlidesLoop()
+        {
+            Assert.AreEqual(0, SlideshowPromoPlayer.SlideIndex(0f, 5f, 3));
+            Assert.AreEqual(2, SlideshowPromoPlayer.SlideIndex(14.9f, 5f, 3));
+            Assert.AreEqual(0, SlideshowPromoPlayer.SlideIndex(15f, 5f, 3), "wraps after the last slide");
+            Assert.AreEqual(1, SlideshowPromoPlayer.SlideIndex(21f, 5f, 3));
+            Assert.AreEqual(0, SlideshowPromoPlayer.SlideIndex(-1f, 5f, 3));
+            Assert.AreEqual(0, SlideshowPromoPlayer.SlideIndex(10f, 5f, 0));
         }
     }
 }

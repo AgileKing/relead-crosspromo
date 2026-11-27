@@ -9,4 +9,4 @@ Date: 2026-11-27
 - Unscaled time everywhere (works with `timeScale = 0`), frame delta capped at 0.25 s so a return from background doesn't jump the skip/complete clock. The watch clock only ticks while content actually plays.
 - Video: `file://` URL from the cache, `RenderTexture` sized to the video, `AspectRatioFitter` FitInParent (= letterbox), audio `Direct`, 10 s prepare timeout → Failed. Muting the host's own music is the host's job (callback).
 - Slideshow: up to 2 screenshots per game, interleaved, 15 s total, 3–6 s per slide; always in the host orientation.
-- Close before the end = Skipped (only possible after `skipAfterSec`). Content end → end card; closing it = Completed. The overlay reports exactly once, also if it is destroyed by a scene change (Failed "destroyed").
+- ~~Close before the end = Skipped (only possible after `skipAfterSec`). Content end → end card; closing it = Completed.~~ Superseded by 0008 (30 s timeline, looping content). The overlay reports exactly once, also if it is destroyed by a scene change (Failed "destroyed").

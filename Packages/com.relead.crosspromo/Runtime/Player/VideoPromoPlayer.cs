@@ -5,7 +5,7 @@ using UnityEngine.Video;
 
 namespace Relead.CrossPromo
 {
-    /// <summary>IPromoPlayer for media type "video": VideoPlayer → RenderTexture → RawImage, from the local cache.</summary>
+    /// <summary>IPromoPlayer for media type "video": VideoPlayer → RenderTexture → RawImage, from the local cache. Loops until closed.</summary>
     public sealed class VideoPromoPlayer : IPromoPlayer
     {
         public bool CanPlay(string mediaType) => mediaType == PromoMedia.TypeVideo;
@@ -32,14 +32,6 @@ namespace Relead.CrossPromo
 
         protected override PromoOrientation ContentOrientation => Request.Media.Orientation;
         protected override bool ContentRunning => _vp != null && _vp.isPlaying;
-        protected override float? ContentDuration
-        {
-            get
-            {
-                if (_vp != null && _prepared && _vp.length > 0) return (float)_vp.length;
-                return Request.Media.DurationSec.HasValue ? (float)Request.Media.DurationSec.Value : (float?)null;
-            }
-        }
 
         protected override void BuildContent(RectTransform area)
         {
@@ -58,7 +50,8 @@ namespace Relead.CrossPromo
             }
             _vp = gameObject.AddComponent<VideoPlayer>();
             _vp.playOnAwake = false;
-            _vp.isLooping = false;
+            // Short videos loop until the download panel / reward; longer ones simply keep playing.
+            _vp.isLooping = true;
             _vp.skipOnDrop = true;
             _vp.waitForFirstFrame = true;
             _vp.timeUpdateMode = VideoTimeUpdateMode.UnscaledGameTime;
@@ -68,7 +61,6 @@ namespace Relead.CrossPromo
             _vp.renderMode = VideoRenderMode.RenderTexture;
             _vp.errorReceived += (p, msg) => Fail("video: " + msg);
             _vp.prepareCompleted += OnPrepared;
-            _vp.loopPointReached += p => ContentFinished();
             _vp.Prepare();
         }
 

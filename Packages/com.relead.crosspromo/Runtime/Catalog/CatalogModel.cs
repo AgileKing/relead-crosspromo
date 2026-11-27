@@ -36,7 +36,12 @@ namespace Relead.CrossPromo
     public sealed class CatalogRules
     {
         public int MaxPerDay = 3;
-        public float SkipAfterSec = 5f;
+        /// <summary>Top-left Skip button appears (0 = from the start). Skip before RewardAfterSec = no reward.</summary>
+        public float SkipAfterSec = 0f;
+        /// <summary>Download panel over the still-playing video.</summary>
+        public float EndCardAtSec = 25f;
+        /// <summary>"Earned! Close" appears; any close from here on = Completed. Never below EndCardAtSec.</summary>
+        public float RewardAfterSec = 30f;
         public float RotateHintTimeoutSec = 3f;
     }
 
@@ -98,9 +103,27 @@ namespace Relead.CrossPromo
         /// <summary>Relative to the base URL. Immutable on the server: new content = new path.</summary>
         public string Url;
         public double? DurationSec;
+        /// <summary>ISO 639-1 language of the content, lower case. Null = default for every language.</summary>
+        public string Lang;
+        /// <summary>Pixel size (display), or null when the catalog doesn't say.</summary>
+        public int? Width;
+        public int? Height;
         public long? Bytes;
         /// <summary>Lower-case hex, or null.</summary>
         public string Sha256;
+
+        /// <summary>Long side / short side, or null without a size.</summary>
+        public float? AspectRatio
+        {
+            get
+            {
+                if (Width == null || Height == null || Width <= 0 || Height <= 0) return null;
+                return (float)Math.Max(Width.Value, Height.Value) / Math.Min(Width.Value, Height.Value);
+            }
+        }
+
+        /// <summary>No language, or English: the variant for players whose language has no own cut.</summary>
+        public bool IsDefaultLanguage => string.IsNullOrEmpty(Lang) || string.Equals(Lang, "en", StringComparison.OrdinalIgnoreCase);
     }
 
     /// <summary>Language code → text, fallback "en".</summary>

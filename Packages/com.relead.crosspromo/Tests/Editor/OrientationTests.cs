@@ -90,21 +90,44 @@ namespace Relead.CrossPromo.Tests
         }
 
         [Test]
-        public void WatchClockSkipCountdown()
+        public void WatchClockAdTimeline()
         {
-            var c = new WatchClock(5f);
-            Assert.IsFalse(c.CanSkip);
-            Assert.AreEqual(5, c.SecondsUntilSkip);
-            c.Tick(0.5f);
-            Assert.AreEqual(5, c.SecondsUntilSkip);
+            var c = new WatchClock(0f, 25f, 30f);
+            Assert.IsTrue(c.CanSkip, "Skip from the start");
+            Assert.IsFalse(c.ShowEndCard);
+            Assert.IsFalse(c.Earned);
+            Assert.AreEqual(30, c.SecondsUntilReward);
             c.Tick(-3f);
-            c.Tick(4.4f);
-            Assert.IsFalse(c.CanSkip);
-            Assert.AreEqual(1, c.SecondsUntilSkip);
+            Assert.AreEqual(0f, c.WatchedSec, "negative dt ignored");
+            c.Tick(24.9f);
+            Assert.IsFalse(c.ShowEndCard);
             c.Tick(0.1f);
+            Assert.IsTrue(c.ShowEndCard, "download panel at 25 s");
+            Assert.IsFalse(c.Earned);
+            Assert.AreEqual(5, c.SecondsUntilReward);
+            c.Tick(4.5f);
+            Assert.AreEqual(1, c.SecondsUntilReward);
+            Assert.IsFalse(c.Earned);
+            c.Tick(0.5f);
+            Assert.IsTrue(c.Earned, "reward at 30 s");
+            Assert.AreEqual(0, c.SecondsUntilReward);
+            Assert.AreEqual(1f, c.RewardProgress);
+        }
+
+        [Test]
+        public void WatchClockSkipDelayAndRewardNeverBeforeEndCard()
+        {
+            var c = new WatchClock(5f, 25f, 10f);
+            Assert.IsFalse(c.CanSkip);
+            c.Tick(5f);
             Assert.IsTrue(c.CanSkip);
-            Assert.AreEqual(0, c.SecondsUntilSkip);
-            Assert.IsTrue(new WatchClock(0).CanSkip);
+            c.Tick(10f);
+            Assert.IsFalse(c.Earned, "reward raised to endCardAtSec");
+            c.Tick(10f);
+            Assert.IsTrue(c.Earned);
+            var zero = new WatchClock(0, 0, 0);
+            Assert.IsTrue(zero.Earned, "zero timeline = earned at once");
+            Assert.AreEqual(1f, zero.RewardProgress);
         }
     }
 }

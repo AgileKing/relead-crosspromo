@@ -6,6 +6,14 @@ namespace Relead.CrossPromo.Tests
     public class FacadeTests
     {
         [Test]
+        public void PackageVersionMatchesPackageJson()
+        {
+            var info = UnityEditor.PackageManager.PackageInfo.FindForAssembly(typeof(CrossPromoInfo).Assembly);
+            Assert.NotNull(info);
+            Assert.AreEqual(info.version, CrossPromoInfo.PackageVersion);
+        }
+
+        [Test]
         public void LanguageCodes()
         {
             Assert.AreEqual("nl", CrossPromo.LanguageCode(SystemLanguage.Dutch));
