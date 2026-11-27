@@ -181,13 +181,6 @@ namespace Relead.CrossPromo.Tests
 
     public class DailyCapTests
     {
-        sealed class MemStore : IKeyValueStore
-        {
-            public readonly Dictionary<string, string> D = new Dictionary<string, string>();
-            public string Get(string k) { string v; return D.TryGetValue(k, out v) ? v : null; }
-            public void Set(string k, string v) { D[k] = v; }
-        }
-
         [Test]
         public void CountsPerLocalDayAndResets()
         {
