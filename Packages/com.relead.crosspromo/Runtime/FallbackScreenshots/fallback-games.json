@@ -18,6 +18,14 @@
       "windows": ""
     },
     {
+      "id": "chopperking",
+      "name": "Chopper King",
+      "urlScheme": "relead-g03",
+      "android": "com.relead.chopperking",
+      "ios": "6740000328",
+      "windows": ""
+    },
+    {
       "id": "gpking",
       "name": "GP King",
       "urlScheme": "relead-g05",
