@@ -32,6 +32,22 @@
       "android": "com.relead.gp",
       "ios": "",
       "windows": ""
+    },
+    {
+      "id": "breakoutking",
+      "name": "Breakout King",
+      "urlScheme": "relead-g04",
+      "android": "com.relead.breakout",
+      "ios": "6749535385",
+      "windows": ""
+    },
+    {
+      "id": "fasternumbers",
+      "name": "Faster Numbers",
+      "urlScheme": "relead-g06",
+      "android": "com.klaver.math",
+      "ios": "6449402280",
+      "windows": ""
     }
   ]
 }
