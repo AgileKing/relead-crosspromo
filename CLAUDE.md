@@ -15,5 +15,5 @@ This repo is public: no secrets, no secret names, no local paths in committed fi
 - Secrets: PowerShell SecretManagement vault, never in repo (see global CLAUDE.md).
 - App Store Connect and Play Developer API keys exist in the vault (shared by all Relead games). Use them read-only here (app ids, store screenshots for `Runtime/FallbackScreenshots`).
 - Decisions: `docs/decisions/NNNN-title.md`, one per choice, same commit as the work.
-- Versioning: semver in package.json + git tag. CHANGELOG.md per release.
+- Versioning: semver in package.json + git tag. CHANGELOG.md per release. Games pin `#vX.Y.Z` (no ranges in git UPM). After pushing a tag: call agent `relead-crosspromo` with `release: vX.Y.Z` → it bumps + commits each game's manifest (no push).
 - Context cap ~150k: commit, write handoff in `docs/status.md`, stop.
