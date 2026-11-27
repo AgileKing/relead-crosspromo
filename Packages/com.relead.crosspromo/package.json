@@ -3,7 +3,7 @@
   "version": "0.1.0",
   "displayName": "Relead Cross-Promo",
   "description": "Rewarded cross-promotion between Relead games: video promos now, HTML5 playables later. Content from https://ads.relead.com.",
-  "unity": "2021.3",
+  "unity": "6000.5",
   "author": { "name": "Relead" },
   "dependencies": {
     "com.unity.ugui": "1.0.0",

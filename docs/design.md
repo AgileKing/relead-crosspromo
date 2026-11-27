@@ -57,5 +57,5 @@ Games are locked to portrait or landscape; promos may exist in one or both orien
 
 ## Compatibility
 
-- `"unity": "2021.3"` in package.json: FasterNumbers is still on 2021.3. Develop/test on 6000.5.8f1 (only editor installed) but use only APIs that exist in 2021.3.
+- `"unity": "6000.5"` in package.json (user 2026-11-27). FasterNumbers (2021.3) is upgraded before it gets the package. Develop/test on 6000.5.8f1.
 - No dependencies beyond Unity built-ins (VideoPlayer, UnityWebRequest, uGUI). JSON via `JsonUtility` or a tiny parser; Newtonsoft optional is not allowed (not every game has it).

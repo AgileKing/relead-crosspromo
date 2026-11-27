@@ -6,7 +6,7 @@ Unity package `com.relead.crosspromo`, shared by all Relead games. Design: `docs
 
 - Repo root = dev Unity project (6000.5.8f1). Package = `Packages/com.relead.crosspromo/` (embedded). Games consume via git URL `?path=/Packages/com.relead.crosspromo#vX.Y.Z`.
 - Commit `.meta` files for everything in the package. Git UPM folder is immutable → missing meta = asset ignored.
-- Code must compile on Unity 2021.3 too. No newer APIs. No third-party deps. No Newtonsoft.
+- Min Unity 6000.5 (user 2026-11-27; FasterNumbers gets upgraded later). No third-party deps. No Newtonsoft.
 - Namespace `Relead.CrossPromo`. Asmdefs: `Relead.CrossPromo`, `Relead.CrossPromo.Editor`, `Relead.CrossPromo.Tests`.
 - Tests first, strict. EditMode tests for catalog parse, selection/filters, caps, orientation choice, store-link building. No test = not done. 0 tests reported = failed run.
 - Run tests (Editor closed): `& "C:\Program Files\Unity\Hub\Editor\6000.5.8f1\Editor\Unity.exe" -batchmode -projectPath . -runTests -testPlatform EditMode -testResults TestResults.xml -logFile Logs/test-run.log` → read only `<test-run ` line + failed cases; log: `Select-String 'error CS|Exception'`. Never `-logFile -`.
