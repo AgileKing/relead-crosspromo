@@ -20,11 +20,12 @@ Decided 2026-11-27 with the user. Phase 1 = option A (video). Everything is prep
 ## Flow
 
 1. `CrossPromo.Init(config)` at startup: `hostGameId`, platform, language, base URLs, tracking endpoint, current orientation provider.
-2. Catalog: download `https://ads.relead.com/catalog/promos.json` (short cache), keep last good copy on disk, validate `schemaVersion`.
-3. Prefetch: the media of the next promo is downloaded in the background (wifi preferred) to `persistentDataPath`, verified by `bytes`/`sha256`. A promo is only "available" when its media is cached, so showing it is instant and works offline.
+2. Catalog: check `https://ads.relead.com/catalog/promos.json` **at most once a day** (last-check time stored; `If-None-Match` / `If-Modified-Since` sent when we have an ETag / Last-Modified, `304` = keep cache). Keep the last good copy on disk, validate `schemaVersion`. A failed check retries at the next launch, never in a loop. Changed 2026-11-27 (user): was "short cache".
+3. Prefetch: keep **two** videos downloaded ahead in `persistentDataPath`, **only on wifi** (`Application.internetReachability == ReachableViaLocalAreaNetwork`), verified by `bytes`/`sha256`. After one is shown it rotates out and the next is fetched on wifi; older files are evicted (disk cap). A promo is only "available" when its media is cached, so showing it is instant and works offline.
 4. Selection: filter out the host game itself, games already installed, expired/not started promos, promos needing a newer `minPackageVersion`, media types this build can't play; then weighted random; respect `maxPerDay`.
 5. `CrossPromo.IsReady` → host enables its "watch for reward" button. `CrossPromo.Show(onResult)` → result `Completed | Skipped | Failed` plus `StoreClicked` flag. Host grants the reward on `Completed`.
 6. End card: icon, headline, "Get it" button → store page with campaign parameters, close button.
+7. Offline fallback: no cached video (no wifi yet, no catalog, first launch offline) → `IsReady` is still true and `Show` plays a **slideshow** of screenshots of other Relead games with name + store button. The screenshots are **bundled in the package** only (a few JPGs per game, ~1080 px, plus name and store ids) — never downloaded; a new package version refreshes them. Same rules as a video: close after `skipAfterSec`, reward on completion. Decided 2026-11-27 (user).
 
 ## Portrait vs landscape
 
@@ -53,9 +54,11 @@ Games are locked to portrait or landscape; promos may exist in one or both orien
 
 ## Hosting
 
+- Static host (Azure Static Web Apps Free now; ASPHostPortal shared hosting possible). The first request can take seconds: timeouts ~15 s, every download in the background, nothing ever blocks the game.
 - `ads.relead.com` may be blocked by ad-blocking DNS (many blocklists match `ads.*`). The config therefore takes a **list** of base URLs; the first that answers wins. A second hostname can be added later without a code change if config is read from the catalog's companion file.
 
 ## Compatibility
 
 - `"unity": "6000.5"` in package.json (user 2026-11-27). FasterNumbers (2021.3) is upgraded before it gets the package. Develop/test on 6000.5.8f1.
-- No dependencies beyond Unity built-ins (VideoPlayer, UnityWebRequest, uGUI). JSON via `JsonUtility` or a tiny parser; Newtonsoft optional is not allowed (not every game has it).
+- No dependencies beyond Unity built-ins (VideoPlayer, UnityWebRequest, uGUI). JSON via a tiny built-in parser (`MiniJson`); Newtonsoft is not allowed (not every game has it).
+- Images (icons, posters, bundled screenshots): PNG/JPG only — Unity can't decode WebP.
