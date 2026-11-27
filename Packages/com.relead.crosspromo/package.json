@@ -1,0 +1,24 @@
+{
+  "name": "com.relead.crosspromo",
+  "version": "0.1.0",
+  "displayName": "Relead Cross-Promo",
+  "description": "Rewarded cross-promotion between Relead games: video promos now, HTML5 playables later. Content from https://ads.relead.com.",
+  "unity": "2021.3",
+  "author": { "name": "Relead" },
+  "dependencies": {
+    "com.unity.ugui": "1.0.0",
+    "com.unity.modules.video": "1.0.0",
+    "com.unity.modules.unitywebrequest": "1.0.0",
+    "com.unity.modules.unitywebrequesttexture": "1.0.0",
+    "com.unity.modules.imageconversion": "1.0.0",
+    "com.unity.modules.jsonserialize": "1.0.0",
+    "com.unity.modules.ui": "1.0.0"
+  },
+  "samples": [
+    {
+      "displayName": "Demo scene",
+      "description": "A host scene with a 'watch for reward' button.",
+      "path": "Samples~/Demo"
+    }
+  ]
+}

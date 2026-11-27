@@ -1,0 +1,14 @@
+{
+    "name": "Relead.CrossPromo.Editor",
+    "rootNamespace": "Relead.CrossPromo.Editor",
+    "references": ["Relead.CrossPromo"],
+    "includePlatforms": ["Editor"],
+    "excludePlatforms": [],
+    "allowUnsafeCode": false,
+    "overrideReferences": false,
+    "precompiledReferences": [],
+    "autoReferenced": true,
+    "defineConstraints": [],
+    "versionDefines": [],
+    "noEngineReferences": false
+}
