@@ -45,6 +45,7 @@ namespace Relead.CrossPromo
             var noCache = new SelectionContext
             {
                 HostGameId = ctx.HostGameId,
+                HostAppIdentifier = ctx.HostAppIdentifier,
                 Platform = ctx.Platform,
                 PackageVersion = ctx.PackageVersion,
                 NowUtc = ctx.NowUtc,

@@ -10,7 +10,7 @@ All 10 KICKOFF steps have code. 111 EditMode tests pass. Tested in the editor on
 
 ## Open / next
 
-1. **Bundled fallback screenshots**: `Runtime/Resources/ReleadCrossPromoFallback.asset` does not exist yet. Create it via Assets > Create > Relead > Cross-Promo Fallback Game Set inside the package. Add a few JPGs (~1080 px) per game with names and store ids. Until then the offline slideshow has nothing to show, so `IsReady` is false without a cached video.
+1. **Bundled fallback set**: done (kingofgames, puzzleking, gpking; 3 JPGs each, 854 KB total) from king-promo / puzzle-promo / race store screenshots. Source: `Runtime/FallbackScreenshots/fallback-games.json` + `<id>/NN.jpg`; rebuild with Relead > Cross-Promo > Rebuild Fallback Set. Open: GP King has no public listing yet (Play 404, no App Store id), so its slides link to a dead Play page until it is published; Puzzles/GP King urlSchemes unknown (catalog only has kingofgames = relead-g01); no Windows product ids.
 2. **Device test**: Android and iOS builds. Check the rotate hint angles on real hardware, `canOpenURL`, `<queries>` resolution, VideoPlayer from `file://` on Android, and the Info.plist merge.
 3. **Play-mode smoke test** against the live catalog (`kingofgames-placeholder-01`). Store ids are still "TODO", so use the Tester window (RequireStoreLink=false).
 4. **Android Play Install Referrer** for `first_open` attribution in game B. It needs Google's `installreferrer` library, which is a third-party dependency, so it needs a decision.

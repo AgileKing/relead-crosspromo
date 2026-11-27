@@ -74,6 +74,7 @@ namespace Relead.CrossPromo
             if (config.Fallback == null) config.Fallback = Resources.Load<FallbackGameSet>(FallbackGameSet.ResourceName);
 
             _catalog.LoadFromDisk();
+            WarnIfUnknownHost();
             SendFirstOpenOnce();
             Refresh();
         }
@@ -258,12 +259,13 @@ namespace Relead.CrossPromo
         static List<FallbackGame> SelectFallback()
         {
             var set = _config != null ? _config.Fallback : null;
-            return FallbackSelector.Select(set != null ? set.games : null, _config.HostGameId, _platform, _installed.IsInstalled, 3, Random);
+            return FallbackSelector.Select(set != null ? set.games : null, _config.HostGameId, _platform, _installed.IsInstalled, 3, Random, Application.identifier);
         }
 
         static SelectionContext Context() => new SelectionContext
         {
             HostGameId = _config.HostGameId,
+            HostAppIdentifier = Application.identifier,
             Platform = _platform,
             NowUtc = DateTime.UtcNow,
             HostOrientation = _config.HostOrientation != null ? _config.HostOrientation() : HostShape(),
@@ -279,6 +281,16 @@ namespace Relead.CrossPromo
             if (promoId != null) p["promoId"] = promoId;
             if (targetGameId != null) p["targetGameId"] = targetGameId;
             try { _tracker.Track(name, p); } catch (Exception e) { Debug.LogException(e); }
+        }
+
+        /// <summary>A typo in HostGameId would make the game promote itself; the package-name check catches most cases, this makes it visible.</summary>
+        static void WarnIfUnknownHost()
+        {
+            bool known = Catalog != null && Catalog.FindGame(_config.HostGameId) != null;
+            if (!known && _config.Fallback != null)
+                foreach (var g in _config.Fallback.games) if (g != null && g.id == _config.HostGameId) known = true;
+            if (!known && (Catalog != null || _config.Fallback != null))
+                Debug.LogWarning("[CrossPromo] HostGameId '" + _config.HostGameId + "' is not a known Relead game id (catalog games[].id, e.g. kingofgames, puzzleking, gpking). This game may be promoted to itself.");
         }
 
         static void SendFirstOpenOnce()

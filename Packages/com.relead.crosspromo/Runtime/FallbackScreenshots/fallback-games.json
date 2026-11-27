@@ -1,0 +1,29 @@
+{
+  "comment": "Source for Runtime/Resources/ReleadCrossPromoFallback.asset. Edit, then run Relead > Cross-Promo > Rebuild Fallback Set (or -executeMethod Relead.CrossPromo.Editor.FallbackSetBuilder.Rebuild). Screenshots: <id>/NN.jpg next to this file, JPG, long side 1080 px, sorted by name. Ids = catalog games[].id.",
+  "games": [
+    {
+      "id": "kingofgames",
+      "name": "King of the Games",
+      "urlScheme": "relead-g01",
+      "android": "com.relead.kingofgames",
+      "ios": "6630364351",
+      "windows": ""
+    },
+    {
+      "id": "puzzleking",
+      "name": "Puzzles",
+      "urlScheme": "",
+      "android": "com.relead.puzzle",
+      "ios": "6792832839",
+      "windows": ""
+    },
+    {
+      "id": "gpking",
+      "name": "GP King",
+      "urlScheme": "",
+      "android": "com.relead.gp",
+      "ios": "",
+      "windows": ""
+    }
+  ]
+}

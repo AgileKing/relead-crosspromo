@@ -46,7 +46,7 @@ namespace Relead.CrossPromo
     public static class FallbackSelector
     {
         public static List<FallbackGame> Select(IList<FallbackGame> games, string hostGameId, PromoPlatform platform,
-            Func<GameInfo, bool> isInstalled, int maxGames, System.Random random)
+            Func<GameInfo, bool> isInstalled, int maxGames, System.Random random, string hostAppIdentifier = null)
         {
             var preferred = new List<FallbackGame>();
             var lastResort = new List<FallbackGame>();
@@ -56,6 +56,7 @@ namespace Relead.CrossPromo
                 {
                     if (g == null || string.IsNullOrEmpty(g.id) || g.id == hostGameId || g.ScreenshotCount == 0) continue;
                     var info = g.ToGameInfo();
+                    if (PromoSelector.IsHostApp(info, hostAppIdentifier)) continue;
                     bool installed = isInstalled != null && isInstalled(info);
                     bool hasStore = !string.IsNullOrEmpty(info.Store.For(platform));
                     if (!installed && hasStore) preferred.Add(g);

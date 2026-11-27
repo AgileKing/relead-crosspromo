@@ -7,6 +7,8 @@ namespace Relead.CrossPromo
     public sealed class SelectionContext
     {
         public string HostGameId;
+        /// <summary>Application.identifier. A game whose Android package equals it is the host too (guards against a wrong HostGameId).</summary>
+        public string HostAppIdentifier;
         public PromoPlatform Platform;
         public string PackageVersion = CrossPromoInfo.PackageVersion;
         public DateTime NowUtc = DateTime.UtcNow;
@@ -55,6 +57,7 @@ namespace Relead.CrossPromo
             if (!SemVer.Satisfies(ctx.PackageVersion, p.MinPackageVersion)) return "needs package " + p.MinPackageVersion;
             var game = catalog.FindGame(p.GameId);
             if (game == null) return "unknown game";
+            if (IsHostApp(game, ctx.HostAppIdentifier)) return "self";
             if (ctx.RequireStoreLink && string.IsNullOrEmpty(game.Store.For(ctx.Platform))) return "no store id";
             if (ctx.IsInstalled != null && ctx.IsInstalled(game)) return "installed";
             if (ChooseMedia(p, ctx, false) == null) return "no playable media";
@@ -77,6 +80,11 @@ namespace Relead.CrossPromo
             }
             return other;
         }
+
+        /// <summary>Bundle id and Android package are the same for Relead games, so the package identifies the host on every platform.</summary>
+        public static bool IsHostApp(GameInfo game, string hostAppIdentifier)
+            => game != null && !string.IsNullOrEmpty(hostAppIdentifier) && !string.IsNullOrEmpty(game.Store.Android)
+               && string.Equals(game.Store.Android, hostAppIdentifier, StringComparison.OrdinalIgnoreCase);
 
         public static bool IsPlayable(PromoMedia m, SelectionContext ctx)
         {

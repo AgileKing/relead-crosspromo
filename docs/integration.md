@@ -17,13 +17,15 @@ using Relead.CrossPromo;
 
 CrossPromo.Init(new CrossPromoConfig
 {
-    HostGameId = "gpking",          // catalog games[].id of THIS game
+    HostGameId = "gpking",          // THIS game's Relead id: kingofgames | puzzleking | gpking (catalog games[].id)
     IngestKey  = "<gpking ingest key for api.relead.com>",
     // TrackingGameId = "gpking",   // only if the analytics id differs from HostGameId
     // InstallId = myAnalytics.InstallId, // if the game already has a stable install id
     // DeviceOrientation = () => ..., // only if the project disabled the legacy Input API (see below)
 });
 ```
+
+`HostGameId` is how the package knows which game not to advertise (in videos and in the offline slideshow). As a safety net, a game whose Android package equals `Application.identifier` is also never shown, and Init logs a warning if the id is unknown.
 
 Everything runs in the background: the catalog is checked at most once a day, and two videos are prefetched, on wifi only.
 
