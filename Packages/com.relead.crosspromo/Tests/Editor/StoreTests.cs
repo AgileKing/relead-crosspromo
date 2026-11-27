@@ -152,6 +152,40 @@ namespace Relead.CrossPromo.Tests
             Assert.AreEqual(50, Count(x, "<intent>"));
         }
 
+        /// <summary>
+        /// Unity only binds a ScriptableObject asset to its script when the class lives in a file of the same name.
+        /// Otherwise the asset is written with "no script" and Find() never sees it.
+        /// </summary>
+        [Test]
+        public void BuildSettingsAssetRoundTrips()
+        {
+            var so = UnityEngine.ScriptableObject.CreateInstance<CrossPromoBuildSettings>();
+            var script = UnityEditor.MonoScript.FromScriptableObject(so);
+            Assert.IsNotNull(script, "CrossPromoBuildSettings must be in CrossPromoBuildSettings.cs");
+            Assert.AreEqual(typeof(CrossPromoBuildSettings), script.GetClass());
+
+            const string path = "Assets/__CrossPromoBuildSettingsTest.asset";
+            so.hostUrlScheme = "relead-g05";
+            so.androidPackages = new[] { "com.relead.kingofgames" };
+            UnityEditor.AssetDatabase.CreateAsset(so, path);
+            try
+            {
+                UnityEditor.AssetDatabase.SaveAssets();
+                var scriptGuid = UnityEditor.AssetDatabase.AssetPathToGUID(UnityEditor.AssetDatabase.GetAssetPath(script));
+                StringAssert.Contains("guid: " + scriptGuid, System.IO.File.ReadAllText(path), "asset's m_Script points at the script");
+                var loaded = UnityEditor.AssetDatabase.LoadAssetAtPath<CrossPromoBuildSettings>(path);
+                Assert.IsNotNull(loaded, "asset reloads as CrossPromoBuildSettings");
+                Assert.AreEqual("relead-g05", loaded.hostUrlScheme);
+                var found = CrossPromoBuildSettings.Find();
+                Assert.IsNotNull(found, "Find() sees the asset");
+                Assert.AreEqual("relead-g05", found.hostUrlScheme);
+            }
+            finally
+            {
+                UnityEditor.AssetDatabase.DeleteAsset(path);
+            }
+        }
+
         static int Count(string s, string sub)
         {
             int n = 0, i = 0;

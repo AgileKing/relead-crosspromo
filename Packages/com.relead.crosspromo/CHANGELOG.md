@@ -1,7 +1,8 @@
 # Changelog
 
-## [Unreleased]
+## [0.1.1] - 2026-11-27
 
+- Fix: `CrossPromoBuildSettings` now lives in its own `CrossPromoBuildSettings.cs`. Before, the asset was saved with no script, so builds never registered the game's own url scheme (iOS CFBundleURLTypes, Android VIEW intent-filter) or the `androidPackages` `<queries>`: other games could not detect it as installed. Games that skipped creating the asset: create it now (Assets > Create > Relead > Cross-Promo Build Settings).
 - Offline fallback set: PuzzleKing slides are now Sudoku, Crime Scene and Traffic Jam (from the current store screenshots), instead of Sudoku, Paint and Checkmate.
 
 ## [0.1.0] - 2026-11-27
