@@ -1,5 +1,9 @@
 # Changelog
 
+## [Unreleased]
+
+- Offline fallback set: PuzzleKing slides are now Sudoku, Crime Scene and Traffic Jam (from the current store screenshots), instead of Sudoku, Paint and Checkmate.
+
 ## [0.1.0] - 2026-11-27
 
 - Video cross-promo (option A): catalog schemaVersion 1, daily catalog check (conditional GET, base-URL fallback), 2-slot wifi-only prefetch.
