@@ -7,7 +7,7 @@ Min Unity 6000.5. No dependencies beyond Unity built-ins.
 `Packages/manifest.json`, always pin a tag:
 
 ```json
-"com.relead.crosspromo": "https://github.com/<org>/relead-crosspromo.git?path=/Packages/com.relead.crosspromo#v0.1.0"
+"com.relead.crosspromo": "https://github.com/AgileKing/relead-crosspromo.git?path=/Packages/com.relead.crosspromo#v0.1.0"
 ```
 
 ## 2. Init at startup

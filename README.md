@@ -10,7 +10,7 @@ A Unity package (`com.relead.crosspromo`) that shows a ~20-second promo of anoth
 `Packages/manifest.json`:
 
 ```json
-"com.relead.crosspromo": "https://github.com/<org>/relead-crosspromo.git?path=/Packages/com.relead.crosspromo#v1.0.0"
+"com.relead.crosspromo": "https://github.com/AgileKing/relead-crosspromo.git?path=/Packages/com.relead.crosspromo#v0.1.0"
 ```
 
 Always pin a tag, so an update in one game can't break another.

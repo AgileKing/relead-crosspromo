@@ -1,6 +1,6 @@
 # Changelog
 
-## [0.1.0] - unreleased
+## [0.1.0] - 2026-11-27
 
 - Video cross-promo (option A): catalog schemaVersion 1, daily catalog check (conditional GET, base-URL fallback), 2-slot wifi-only prefetch.
 - Rewarded flow: `CrossPromo.Init / IsReady / Show`, close after `skipAfterSec`, end card with store button, `maxPerDay`.
