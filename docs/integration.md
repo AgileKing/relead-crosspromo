@@ -45,6 +45,7 @@ CrossPromo.Show(result =>
 - `result.StoreClicked` is for information only. **Never** make the reward depend on it (Apple 3.2.2 / Google Play policy).
 - `CrossPromo.Opened` / `CrossPromo.Closed` let you mute your music. The overlay uses unscaled time, so pausing with `Time.timeScale = 0` is fine.
 - Promo sound follows `AudioListener.volume` and ignores `AudioListener.pause`. If your game has its own sound-off setting, pass it: `IsMuted = () => !Settings.SoundOn` in `CrossPromoConfig`.
+- 10 s after the reward the ad closes itself and reports `Completed` (`PromoResult.AutoClosed` = true); grant the reward as for a tap (decision 0018).
 - Losing focus (notification shade, call, app switch, store opened) pauses the video and the 30 s reward timer; they continue when the game is back (decision 0014).
 - A video that can't play is deleted from the cache and the offline slideshow plays instead, in the same `Show` (one `Opened`/`Closed`, one result).
 - Catalog media need `bytes` and `sha256` and a plain relative `url`; media without them is never downloaded (decision 0012).

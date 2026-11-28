@@ -279,7 +279,7 @@ namespace Relead.CrossPromo
                 var props = Merge(baseProps, new Dictionary<string, object> { { "watchSec", Math.Round(result.WatchedSec, 1) }, { "storeClicked", result.StoreClicked } });
                 switch (result.Outcome)
                 {
-                    case PromoOutcome.Completed: Track("promo_completed", promoId, result.TargetGameId, props); break;
+                    case PromoOutcome.Completed: props["autoClosed"] = result.AutoClosed; Track("promo_completed", promoId, result.TargetGameId, props); break;
                     case PromoOutcome.Skipped: Track("promo_skipped", promoId, result.TargetGameId, props); break;
                     default: props["reason"] = result.FailReason; Track("promo_failed", promoId, result.TargetGameId, props); break;
                 }

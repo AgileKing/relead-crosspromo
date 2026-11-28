@@ -146,14 +146,23 @@ namespace Relead.CrossPromo
         readonly float _skipAfterSec;
         readonly float _endCardAtSec;
         readonly float _rewardAfterSec;
+        readonly float _autoCloseAfterEarnedSec;
         public float WatchedSec { get; private set; }
 
-        public WatchClock(float skipAfterSec, float endCardAtSec, float rewardAfterSec)
+        /// <summary>The ad closes itself (Completed) this long after the reward is earned (decision 0018).</summary>
+        public const float DefaultAutoCloseAfterEarnedSec = 10f;
+
+        /// <param name="autoCloseAfterEarnedSec">0 or less = never closes itself.</param>
+        public WatchClock(float skipAfterSec, float endCardAtSec, float rewardAfterSec, float autoCloseAfterEarnedSec = DefaultAutoCloseAfterEarnedSec)
         {
             _skipAfterSec = Mathf.Max(0, skipAfterSec);
             _endCardAtSec = Mathf.Max(0, endCardAtSec);
             _rewardAfterSec = Mathf.Max(_endCardAtSec, rewardAfterSec);
+            _autoCloseAfterEarnedSec = autoCloseAfterEarnedSec;
         }
+
+        /// <summary>Watched long enough past the reward: close as if "Earned! Close" was tapped.</summary>
+        public bool AutoClose => _autoCloseAfterEarnedSec > 0 && WatchedSec >= _rewardAfterSec + _autoCloseAfterEarnedSec;
 
         public void Tick(float dt) { if (dt > 0) WatchedSec += dt; }
         /// <summary>Top-left Skip button visible.</summary>

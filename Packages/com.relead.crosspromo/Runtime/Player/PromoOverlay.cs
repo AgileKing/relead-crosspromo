@@ -51,6 +51,7 @@ namespace Relead.CrossPromo
         bool _storeClicked;
         bool _finished;
         bool _hintTracked;
+        bool _autoClosed;
         PromoOrientation _host;
         readonly PlaybackGate _gate = new PlaybackGate();
 
@@ -190,6 +191,13 @@ namespace Relead.CrossPromo
                     {
                         _earnedTracked = true;
                         Track("promo_earned", new Dictionary<string, object> { { "watchedSec", Clock.WatchedSec } });
+                    }
+                    if (Clock.AutoClose)
+                    {
+                        // Same as tapping "Earned! Close"; the clock only runs while the app is active.
+                        _autoClosed = true;
+                        Finish(PromoOutcome.Completed, null);
+                        return;
                     }
                 }
                 if (_hint.gameObject.activeSelf)
@@ -461,6 +469,7 @@ namespace Relead.CrossPromo
                 WatchedSec = Clock != null ? Clock.WatchedSec : 0,
                 FailReason = reason,
                 WasFallback = IsFallback,
+                AutoClosed = _autoClosed,
             };
             var done = _done;
             _done = null;

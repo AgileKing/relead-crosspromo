@@ -163,6 +163,24 @@ namespace Relead.CrossPromo.Tests
         }
 
         [Test]
+        public void WatchClockAutoClosesTenSecondsAfterTheReward()
+        {
+            var c = new WatchClock(0f, 25f, 30f);
+            Assert.AreEqual(10f, WatchClock.DefaultAutoCloseAfterEarnedSec);
+            c.Tick(30f);
+            Assert.IsTrue(c.Earned);
+            Assert.IsFalse(c.AutoClose);
+            c.Tick(9.9f);
+            Assert.IsFalse(c.AutoClose);
+            c.Tick(0.1f);
+            Assert.IsTrue(c.AutoClose, "40 s watched = 30 s reward + 10 s");
+
+            var off = new WatchClock(0f, 25f, 30f, 0f);
+            off.Tick(1000f);
+            Assert.IsFalse(off.AutoClose, "0 = never");
+        }
+
+        [Test]
         public void WatchClockSkipDelayAndRewardNeverBeforeEndCard()
         {
             var c = new WatchClock(5f, 25f, 10f);

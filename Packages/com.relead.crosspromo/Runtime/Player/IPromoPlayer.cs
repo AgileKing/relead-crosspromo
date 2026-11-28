@@ -26,6 +26,8 @@ namespace Relead.CrossPromo
         public string FailReason;
         /// <summary>True when the bundled offline slideshow was shown instead of a video.</summary>
         public bool WasFallback;
+        /// <summary>Completed by closing itself 10 s after the reward, not by a tap.</summary>
+        public bool AutoClosed;
 
         public override string ToString() => Outcome + (StoreClicked ? " +store" : "") + " " + PromoId + " " + WatchedSec.ToString("0.0") + "s" + (FailReason != null ? " (" + FailReason + ")" : "");
     }

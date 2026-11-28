@@ -1,5 +1,9 @@
 # Changelog
 
+## [0.1.5] - 2026-11-28
+
+- **Auto-close**: 10 s after the reward is earned the ad closes itself as `Completed` (as if "Earned! Close" was tapped). New `PromoResult.AutoClosed`; `promo_completed` gets prop `autoClosed` (decision 0018).
+
 ## [0.1.4] - 2026-11-27
 
 - **Daily cap counts completed promos only**: skipping, a playback failure or a scene change no longer uses up one of today's `maxPerDay` (decision 0011). `RemainingToday` drops only after a rewarded promo.
