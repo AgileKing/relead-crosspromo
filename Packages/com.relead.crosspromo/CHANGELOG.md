@@ -1,5 +1,9 @@
 # Changelog
 
+## [0.1.6] - 2026-11-28
+
+- **Fix**: `CrossPromoInfo.PackageVersion` said 0.1.4 in 0.1.5, so events reported `packageVersion` 0.1.4 and `minPackageVersion` judged the build as 0.1.4. Skip 0.1.5.
+
 ## [0.1.5] - 2026-11-28
 
 - **Auto-close**: 10 s after the reward is earned the ad closes itself as `Completed` (as if "Earned! Close" was tapped). New `PromoResult.AutoClosed`; `promo_completed` gets prop `autoClosed` (decision 0018).

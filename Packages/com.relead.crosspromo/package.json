@@ -1,6 +1,6 @@
 {
   "name": "com.relead.crosspromo",
-  "version": "0.1.5",
+  "version": "0.1.6",
   "displayName": "Relead Cross-Promo",
   "description": "Rewarded cross-promotion between Relead games: video promos now, HTML5 playables later. Content from https://ads.relead.com.",
   "unity": "6000.5",
